@@ -1,0 +1,177 @@
+import { db, type Priority, type Project, type Task, type Note } from './database'
+
+const uid = (): string =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36)
+
+/* ----------------------------- Projects ----------------------------- */
+
+export async function listProjects(): Promise<Project[]> {
+  const projects = await db.projects.toArray()
+  return projects.sort((a, b) => a.createdAt - b.createdAt)
+}
+
+export async function createProject(name: string): Promise<Project> {
+  const project: Project = { id: uid(), name: name.trim(), createdAt: Date.now() }
+  await db.projects.add(project)
+  return project
+}
+
+export async function renameProject(id: string, name: string): Promise<void> {
+  await db.projects.update(id, { name: name.trim() })
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  await db.transaction('rw', db.projects, db.tasks, async () => {
+    await db.tasks.where('projectId').equals(id).delete()
+    await db.projects.delete(id)
+  })
+}
+
+/* ------------------------------- Tasks ------------------------------- */
+
+// Tarefas ativas (nao concluidas) do projeto, ordenadas por prioridade+fila.
+export async function listActiveTasks(projectId: string): Promise<Task[]> {
+  const tasks = await db.tasks.where('projectId').equals(projectId).toArray()
+  return tasks
+    .filter((t) => t.completedAt == null && t.archived === 0)
+    .sort((a, b) => a.order - b.order)
+}
+
+// Tarefas concluidas (para os resumos). Se projectId for undefined, todas.
+export async function listCompletedTasks(projectId?: string): Promise<Task[]> {
+  let tasks: Task[]
+  if (projectId) {
+    tasks = await db.tasks.where('projectId').equals(projectId).toArray()
+  } else {
+    tasks = await db.tasks.toArray()
+  }
+  return tasks
+    .filter((t) => t.completedAt != null)
+    .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0))
+}
+
+export async function createTask(input: {
+  projectId: string
+  title: string
+  priority: Priority
+  description?: string
+}): Promise<Task> {
+  // Adiciona ao fim da fila da coluna (maior order + 1).
+  const existing = await db.tasks
+    .where('[projectId+priority]')
+    .equals([input.projectId, input.priority])
+    .toArray()
+  const active = existing.filter((t) => t.completedAt == null && t.archived === 0)
+  const maxOrder = active.reduce((max, t) => Math.max(max, t.order), -1)
+
+  const task: Task = {
+    id: uid(),
+    projectId: input.projectId,
+    title: input.title.trim(),
+    description: input.description?.trim() ?? '',
+    priority: input.priority,
+    order: maxOrder + 1,
+    createdAt: Date.now(),
+    completedAt: null,
+    archived: 0
+  }
+  await db.tasks.add(task)
+  return task
+}
+
+export async function updateTask(
+  id: string,
+  patch: Partial<Pick<Task, 'title' | 'description' | 'priority'>>
+): Promise<void> {
+  await db.tasks.update(id, patch)
+}
+
+export async function completeTask(id: string): Promise<void> {
+  await db.tasks.update(id, { completedAt: Date.now() })
+}
+
+export async function reopenTask(id: string): Promise<void> {
+  const task = await db.tasks.get(id)
+  if (!task) return
+  const active = await listActiveTasks(task.projectId)
+  const sameCol = active.filter((t) => t.priority === task.priority)
+  const maxOrder = sameCol.reduce((max, t) => Math.max(max, t.order), -1)
+  await db.tasks.update(id, { completedAt: null, order: maxOrder + 1 })
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  await db.tasks.delete(id)
+}
+
+/**
+ * Persiste a nova ordem de UMA coluna reindexando order = indice.
+ * `orderedIds` é a lista de ids na ordem final (topo -> base) da coluna `priority`.
+ */
+export async function reindexColumn(
+  projectId: string,
+  priority: Priority,
+  orderedIds: string[]
+): Promise<void> {
+  await db.transaction('rw', db.tasks, async () => {
+    await Promise.all(
+      orderedIds.map((id, index) =>
+        db.tasks.update(id, { priority, order: index, projectId })
+      )
+    )
+  })
+}
+
+/**
+ * Move um card entre colunas (muda prioridade) e reindexa origem e destino.
+ */
+export async function moveTaskAcross(params: {
+  projectId: string
+  fromPriority: Priority
+  toPriority: Priority
+  fromIds: string[]
+  toIds: string[]
+}): Promise<void> {
+  await db.transaction('rw', db.tasks, async () => {
+    await Promise.all([
+      ...params.fromIds.map((id, i) =>
+        db.tasks.update(id, { priority: params.fromPriority, order: i })
+      ),
+      ...params.toIds.map((id, i) =>
+        db.tasks.update(id, { priority: params.toPriority, order: i })
+      )
+    ])
+  })
+}
+
+/* ------------------------------- Notes ------------------------------- */
+
+export async function listNotes(): Promise<Note[]> {
+  const notes = await db.notes.toArray()
+  return notes.sort((a, b) => b.updatedAt - a.updatedAt)
+}
+
+export async function createNote(): Promise<Note> {
+  const now = Date.now()
+  const note: Note = {
+    id: uid(),
+    title: 'Nova nota',
+    contentMd: '# Nova nota\n\nEscreva aqui...\n',
+    createdAt: now,
+    updatedAt: now
+  }
+  await db.notes.add(note)
+  return note
+}
+
+export async function updateNote(
+  id: string,
+  patch: Partial<Pick<Note, 'title' | 'contentMd'>>
+): Promise<void> {
+  await db.notes.update(id, { ...patch, updatedAt: Date.now() })
+}
+
+export async function deleteNote(id: string): Promise<void> {
+  await db.notes.delete(id)
+}
