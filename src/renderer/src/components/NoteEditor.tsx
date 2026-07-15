@@ -3,23 +3,22 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { Note } from '@renderer/db/database'
 import { useDeleteNote, useUpdateNote } from '@renderer/hooks/useNotes'
+import { useConfirm } from './ConfirmDialog'
+import { useToast } from './Toast'
+import { Icon } from './Icon'
 
 function sanitizeFileName(name: string): string {
   return (name.trim() || 'nota').replace(/[\\/:*?"<>|]+/g, '-').slice(0, 80)
 }
 
-export function NoteEditor({
-  note,
-  onToast
-}: {
-  note: Note
-  onToast: (msg: string) => void
-}): JSX.Element {
+export function NoteEditor({ note }: { note: Note }): JSX.Element {
   const [mode, setMode] = useState<'edit' | 'read'>('edit')
   const [title, setTitle] = useState(note.title)
   const [content, setContent] = useState(note.contentMd)
   const updateNote = useUpdateNote()
   const deleteNote = useDeleteNote()
+  const confirm = useConfirm()
+  const { showToast } = useToast()
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Recarrega ao trocar de nota.
@@ -52,12 +51,19 @@ export function NoteEditor({
     a.download = `${fileName}.md`
     a.click()
     URL.revokeObjectURL(url)
-    onToast('Nota exportada')
+    showToast('Nota exportada')
   }
 
-  const remove = (): void => {
-    if (!confirm('Excluir esta nota?')) return
+  const remove = async (): Promise<void> => {
+    const ok = await confirm({
+      title: 'Excluir nota',
+      message: 'Esta ação não pode ser desfeita.',
+      confirmLabel: 'Excluir',
+      danger: true
+    })
+    if (!ok) return
     deleteNote.mutate(note.id)
+    showToast('Nota excluída')
   }
 
   return (
@@ -74,20 +80,20 @@ export function NoteEditor({
             className={mode === 'edit' ? 'active' : ''}
             onClick={() => setMode('edit')}
           >
-            Editar
+            <Icon name="edit" size={15} /> Editar
           </button>
           <button
             className={mode === 'read' ? 'active' : ''}
             onClick={() => setMode('read')}
           >
-            Ler
+            <Icon name="visibility" size={15} /> Ler
           </button>
         </div>
         <button className="btn" onClick={exportMd}>
-          Exportar .md
+          <Icon name="download" size={16} /> Exportar .md
         </button>
         <button className="btn btn-ghost btn-danger" onClick={remove}>
-          Excluir
+          <Icon name="delete" size={16} /> Excluir
         </button>
       </div>
 

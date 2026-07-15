@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { ProjectSelector } from './ProjectSelector'
+import { Icon } from './Icon'
 import { useTheme } from '@renderer/theme/ThemeProvider'
 
 const TABS = [
-  { to: '/', label: 'Quadro' },
-  { to: '/summary', label: 'Resumo' },
-  { to: '/notes', label: 'Notas' }
+  { to: '/', label: 'Quadro', icon: 'view_kanban' },
+  { to: '/summary', label: 'Resumo', icon: 'monitoring' },
+  { to: '/notes', label: 'Notas', icon: 'sticky_note_2' }
 ] as const
 
 export function AppShell({ children }: { children: ReactNode }): JSX.Element {
@@ -26,6 +27,7 @@ export function AppShell({ children }: { children: ReactNode }): JSX.Element {
               to={t.to}
               className={`tab ${pathname === t.to ? 'active' : ''}`}
             >
+              <Icon name={t.icon} size={16} />
               {t.label}
             </Link>
           ))}
@@ -37,7 +39,7 @@ export function AppShell({ children }: { children: ReactNode }): JSX.Element {
             onClick={toggle}
             title={theme === 'light' ? 'Tema escuro' : 'Tema claro'}
           >
-            {theme === 'light' ? '🌙' : '☀️'}
+            <Icon name={theme === 'light' ? 'dark_mode' : 'light_mode'} size={18} />
           </button>
         </div>
       </header>

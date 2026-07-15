@@ -13,6 +13,7 @@ import { useCompletedTasks } from '@renderer/hooks/useTasks'
 import { useProjects } from '@renderer/hooks/useProjects'
 import { useSelectedProject } from '@renderer/state/SelectedProject'
 import { priorityColorVar, formatDateTime } from '@renderer/lib/format'
+import { Icon } from '@renderer/components/Icon'
 
 type Period = 'day' | 'week' | 'month'
 
@@ -89,14 +90,17 @@ export function SummaryRoute(): JSX.Element {
 
       <div className="stat-grid">
         <div className="stat">
+          <Icon name="task_alt" size={20} className="stat-icon" />
           <div className="stat-value">{inPeriod.length}</div>
           <div className="stat-label">Concluídas ({PERIOD_LABEL[period].toLowerCase()})</div>
         </div>
         <div className="stat">
+          <Icon name="priority_high" size={20} className="stat-icon" />
           <div className="stat-value">{byPriority.urgent + byPriority.high}</div>
           <div className="stat-label">Urgentes + Altas</div>
         </div>
         <div className="stat">
+          <Icon name="folder" size={20} className="stat-icon" />
           <div className="stat-value">{byProject.length}</div>
           <div className="stat-label">Projetos ativos</div>
         </div>
@@ -155,8 +159,15 @@ export function SummaryRoute(): JSX.Element {
 
       <h2 className="section-title">Tarefas concluídas</h2>
       {inPeriod.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>
-          Nenhuma tarefa concluída neste período.
+        <p
+          style={{
+            color: 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}
+        >
+          <Icon name="checklist" size={18} /> Nenhuma tarefa concluída neste período.
         </p>
       ) : (
         <div className="completed-list">

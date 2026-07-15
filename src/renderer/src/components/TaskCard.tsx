@@ -1,7 +1,8 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Task } from '@renderer/db/database'
-import { priorityColorVar, formatDate } from '@renderer/lib/format'
+import { priorityColorVar, formatDate, tagColor } from '@renderer/lib/format'
+import { Icon } from './Icon'
 
 export function TaskCard({
   task,
@@ -22,6 +23,7 @@ export function TaskCard({
   }
 
   const hasDesc = task.description.trim().length > 0
+  const tags = task.tags ?? []
 
   return (
     <div
@@ -35,9 +37,25 @@ export function TaskCard({
       }}
     >
       <div className="card-title">{task.title}</div>
+      {tags.length > 0 && (
+        <div className="card-tags">
+          {tags.map((tag) => {
+            const c = tagColor(tag)
+            return (
+              <span key={tag} className="tag-chip" style={{ background: c.bg, color: c.fg }}>
+                {tag}
+              </span>
+            )
+          })}
+        </div>
+      )}
       <div className="card-meta">
         <span>Criada {formatDate(task.createdAt)}</span>
-        {hasDesc && <span className="card-desc-flag" title="Tem descrição">📝</span>}
+        {hasDesc && (
+          <span className="card-desc-flag" title="Tem descrição">
+            <Icon name="notes" size={14} />
+          </span>
+        )}
       </div>
     </div>
   )

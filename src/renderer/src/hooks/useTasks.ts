@@ -41,7 +41,7 @@ export function useUpdateTask() {
   return useMutation({
     mutationFn: (v: {
       id: string
-      patch: Partial<{ title: string; description: string; priority: Priority }>
+      patch: Partial<{ title: string; description: string; priority: Priority; tags: string[] }>
     }) => api.updateTask(v.id, v.patch),
     onSuccess: invalidate
   })

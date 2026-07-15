@@ -38,7 +38,9 @@ export default defineConfig({
       },
       workbox: {
         clientsClaim: true,
-        skipWaiting: true
+        skipWaiting: true,
+        // Inclui os ícones SVG no precache para funcionarem offline (PWA).
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}']
       },
       devOptions: {
         enabled: true

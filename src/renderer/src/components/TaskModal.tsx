@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react'
 import type { Priority, Task } from '@renderer/db/database'
 import { PRIORITIES, PRIORITY_LABEL } from '@renderer/db/database'
-import { formatDate } from '@renderer/lib/format'
+import { formatDate, priorityColorVar } from '@renderer/lib/format'
 import { useCompleteTask, useDeleteTask, useUpdateTask } from '@renderer/hooks/useTasks'
+import { useConfirm } from './ConfirmDialog'
+import { useToast } from './Toast'
+import { TagInput } from './TagInput'
+import { Icon } from './Icon'
 
 export function TaskModal({
   task,
@@ -14,10 +18,13 @@ export function TaskModal({
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description)
   const [priority, setPriority] = useState<Priority>(task.priority)
+  const [tags, setTags] = useState<string[]>(task.tags ?? [])
 
   const updateTask = useUpdateTask()
   const completeTask = useCompleteTask()
   const deleteTask = useDeleteTask()
+  const confirm = useConfirm()
+  const { showToast } = useToast()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -32,7 +39,7 @@ export function TaskModal({
     if (!trimmed) return
     updateTask.mutate({
       id: task.id,
-      patch: { title: trimmed, description: description.trim(), priority }
+      patch: { title: trimmed, description: description.trim(), priority, tags }
     })
     onClose()
   }
@@ -42,16 +49,31 @@ export function TaskModal({
     onClose()
   }
 
-  const remove = (): void => {
-    if (!confirm('Excluir esta tarefa?')) return
+  const remove = async (): Promise<void> => {
+    const ok = await confirm({
+      title: 'Excluir tarefa',
+      message: 'Esta ação não pode ser desfeita.',
+      confirmLabel: 'Excluir',
+      danger: true
+    })
+    if (!ok) return
     deleteTask.mutate(task.id)
+    showToast('Tarefa excluída')
     onClose()
   }
 
   return (
     <div className="overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Editar tarefa</h3>
+        <div className="modal-head">
+          <h3>Editar tarefa</h3>
+          <span
+            className="badge"
+            style={{ background: priorityColorVar[priority] }}
+          >
+            {PRIORITY_LABEL[priority]}
+          </span>
+        </div>
 
         <div className="field">
           <label>Título</label>
@@ -89,23 +111,28 @@ export function TaskModal({
           </select>
         </div>
 
+        <div className="field">
+          <label>Tags</label>
+          <TagInput tags={tags} onChange={setTags} />
+        </div>
+
         <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>
           Criada em {formatDate(task.createdAt)}
         </div>
 
         <div className="modal-actions">
           <button className="btn btn-primary" onClick={complete}>
-            ✓ Concluir
+            <Icon name="check_circle" size={16} /> Concluir
           </button>
           <button className="btn btn-ghost btn-danger" onClick={remove}>
-            Excluir
+            <Icon name="delete" size={16} /> Excluir
           </button>
           <span className="spacer" />
           <button className="btn btn-ghost" onClick={onClose}>
             Cancelar
           </button>
           <button className="btn btn-primary" onClick={save}>
-            Salvar
+            <Icon name="save" size={16} /> Salvar
           </button>
         </div>
       </div>

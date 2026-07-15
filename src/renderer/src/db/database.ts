@@ -24,6 +24,7 @@ export interface Task {
   description: string
   priority: Priority
   order: number
+  tags: string[]
   createdAt: number
   completedAt: number | null
   archived: number // 0 | 1 (IndexedDB nao indexa boolean)
@@ -48,5 +49,23 @@ db.version(1).stores({
   tasks: 'id, projectId, priority, completedAt, archived, [projectId+priority], [projectId+completedAt]',
   notes: 'id, updatedAt'
 })
+
+// v2: adiciona tags (indice multiEntry *tags) e backfill nas tarefas existentes.
+db
+  .version(2)
+  .stores({
+    projects: 'id, name, createdAt',
+    tasks:
+      'id, projectId, priority, completedAt, archived, *tags, [projectId+priority], [projectId+completedAt]',
+    notes: 'id, updatedAt'
+  })
+  .upgrade((tx) =>
+    tx
+      .table('tasks')
+      .toCollection()
+      .modify((t: Task) => {
+        if (!Array.isArray(t.tags)) t.tags = []
+      })
+  )
 
 export { db }

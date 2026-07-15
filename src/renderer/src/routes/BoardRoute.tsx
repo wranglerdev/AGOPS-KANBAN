@@ -1,4 +1,5 @@
 import { Board } from '@renderer/components/Board'
+import { Icon } from '@renderer/components/Icon'
 import { useProjects, useCreateProject } from '@renderer/hooks/useProjects'
 import { useSelectedProject } from '@renderer/state/SelectedProject'
 
@@ -18,13 +19,15 @@ export function BoardRoute(): JSX.Element {
     return (
       <div className="empty">
         <div className="empty-inner">
-          <div style={{ fontSize: 40 }}>🗂️</div>
+          <div className="empty-illustration">
+            <Icon name="space_dashboard" size={44} />
+          </div>
           <h2 style={{ margin: 0 }}>Nenhum projeto ainda</h2>
           <p style={{ margin: 0, color: 'var(--text-muted)' }}>
             Crie seu primeiro projeto para começar a adicionar tarefas ao quadro.
           </p>
           <button className="btn btn-primary" onClick={create}>
-            + Criar projeto
+            <Icon name="add" size={16} /> Criar projeto
           </button>
         </div>
       </div>

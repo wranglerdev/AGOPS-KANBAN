@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Priority } from '@renderer/db/database'
 import { useCreateTask } from '@renderer/hooks/useTasks'
+import { Icon } from './Icon'
 
 export function QuickAdd({
   projectId,
@@ -26,7 +27,7 @@ export function QuickAdd({
     return (
       <div className="quickadd">
         <button className="quickadd-btn" onClick={() => setOpen(true)}>
-          + Adicionar tarefa
+          <Icon name="add" size={16} /> Adicionar tarefa
         </button>
       </div>
     )

@@ -17,3 +17,22 @@ const dtfTime = new Intl.DateTimeFormat('pt-BR', {
 
 export const formatDate = (ms: number): string => dtf.format(new Date(ms))
 export const formatDateTime = (ms: number): string => dtfTime.format(new Date(ms))
+
+/**
+ * Cor deterministica para um chip de tag, derivada do nome via hash.
+ * Retorna { bg, fg } em HSL, com contraste adequado em tema claro e escuro.
+ */
+export function tagColor(name: string): { bg: string; fg: string } {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash << 5) - hash + name.charCodeAt(i)
+    hash |= 0
+  }
+  const hue = Math.abs(hash) % 360
+  // bg translucido funciona sobre superficie clara ou escura; fg com lightness
+  // intermediaria mantem legibilidade nos dois temas.
+  return {
+    bg: `hsl(${hue} 70% 50% / 0.18)`,
+    fg: `hsl(${hue} 55% 52%)`
+  }
+}

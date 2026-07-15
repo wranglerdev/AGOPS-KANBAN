@@ -17,7 +17,7 @@ import { useActiveTasks } from '@renderer/hooks/useTasks'
 import { moveTaskAcross, reindexColumn } from '@renderer/db/api'
 import { Column } from './Column'
 import { TaskModal } from './TaskModal'
-import { priorityColorVar, formatDate } from '@renderer/lib/format'
+import { priorityColorVar, formatDate, tagColor } from '@renderer/lib/format'
 
 type Cols = Record<Priority, Task[]>
 
@@ -183,6 +183,18 @@ export function Board({ projectId }: { projectId: string }): JSX.Element {
               style={{ ['--card-accent' as string]: priorityColorVar[activeTask.priority] }}
             >
               <div className="card-title">{activeTask.title}</div>
+              {(activeTask.tags ?? []).length > 0 && (
+                <div className="card-tags">
+                  {(activeTask.tags ?? []).map((tag) => {
+                    const c = tagColor(tag)
+                    return (
+                      <span key={tag} className="tag-chip" style={{ background: c.bg, color: c.fg }}>
+                        {tag}
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
               <div className="card-meta">
                 <span>Criada {formatDate(activeTask.createdAt)}</span>
               </div>

@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useCreateNote, useNotes } from '@renderer/hooks/useNotes'
 import { NoteEditor } from '@renderer/components/NoteEditor'
+import { Icon } from '@renderer/components/Icon'
 import { formatDate } from '@renderer/lib/format'
 
 export function NotesRoute(): JSX.Element {
   const { data: notes = [] } = useNotes()
   const createNote = useCreateNote()
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
 
   // Mantem uma selecao valida.
   useEffect(() => {
@@ -19,11 +19,6 @@ export function NotesRoute(): JSX.Element {
       setSelectedId(notes[0].id)
     }
   }, [notes, selectedId])
-
-  const showToast = (msg: string): void => {
-    setToast(msg)
-    setTimeout(() => setToast(null), 1800)
-  }
 
   const addNote = async (): Promise<void> => {
     const note = await createNote.mutateAsync()
@@ -38,13 +33,22 @@ export function NotesRoute(): JSX.Element {
         <div className="notes-sidebar-head">
           <strong style={{ flex: 1 }}>Notas</strong>
           <button className="btn btn-primary" style={{ padding: '5px 12px' }} onClick={addNote}>
-            + Nova
+            <Icon name="add" size={16} /> Nova
           </button>
         </div>
         <div className="notes-list">
           {notes.length === 0 && (
-            <div style={{ color: 'var(--text-muted)', padding: 12, fontSize: 13 }}>
-              Nenhuma nota. Crie a primeira.
+            <div
+              style={{
+                color: 'var(--text-muted)',
+                padding: 12,
+                fontSize: 13,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+            >
+              <Icon name="edit_note" size={16} /> Nenhuma nota. Crie a primeira.
             </div>
           )}
           {notes.map((n) => (
@@ -61,23 +65,23 @@ export function NotesRoute(): JSX.Element {
       </aside>
 
       {selected ? (
-        <NoteEditor key={selected.id} note={selected} onToast={showToast} />
+        <NoteEditor key={selected.id} note={selected} />
       ) : (
         <div className="empty">
           <div className="empty-inner">
-            <div style={{ fontSize: 40 }}>📝</div>
+            <div className="empty-illustration">
+              <Icon name="edit_note" size={44} />
+            </div>
             <h2 style={{ margin: 0 }}>Sem notas</h2>
             <p style={{ margin: 0, color: 'var(--text-muted)' }}>
               Crie uma nota em Markdown, alterne entre editar e ler, e exporte em .md.
             </p>
             <button className="btn btn-primary" onClick={addNote}>
-              + Nova nota
+              <Icon name="add" size={16} /> Nova nota
             </button>
           </div>
         </div>
       )}
-
-      {toast && <div className="toast">{toast}</div>}
     </div>
   )
 }

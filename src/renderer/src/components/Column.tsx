@@ -5,6 +5,7 @@ import { PRIORITY_LABEL } from '@renderer/db/database'
 import { priorityColorVar } from '@renderer/lib/format'
 import { TaskCard } from './TaskCard'
 import { QuickAdd } from './QuickAdd'
+import { Icon } from './Icon'
 
 export function Column({
   priority,
@@ -31,9 +32,14 @@ export function Column({
 
       <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div ref={setNodeRef} className={`column-body ${isOver ? 'drop-active' : ''}`}>
-          {tasks.map((task) => (
-            <TaskCard key={task.id} task={task} onOpen={onOpenTask} />
-          ))}
+          {tasks.length === 0 ? (
+            <div className="column-empty">
+              <Icon name="inbox" size={22} />
+              <span>Sem tarefas</span>
+            </div>
+          ) : (
+            tasks.map((task) => <TaskCard key={task.id} task={task} onOpen={onOpenTask} />)
+          )}
         </div>
       </SortableContext>
     </div>

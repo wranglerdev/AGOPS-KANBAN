@@ -57,6 +57,7 @@ export async function createTask(input: {
   title: string
   priority: Priority
   description?: string
+  tags?: string[]
 }): Promise<Task> {
   // Adiciona ao fim da fila da coluna (maior order + 1).
   const existing = await db.tasks
@@ -73,6 +74,7 @@ export async function createTask(input: {
     description: input.description?.trim() ?? '',
     priority: input.priority,
     order: maxOrder + 1,
+    tags: input.tags ?? [],
     createdAt: Date.now(),
     completedAt: null,
     archived: 0
@@ -83,7 +85,7 @@ export async function createTask(input: {
 
 export async function updateTask(
   id: string,
-  patch: Partial<Pick<Task, 'title' | 'description' | 'priority'>>
+  patch: Partial<Pick<Task, 'title' | 'description' | 'priority' | 'tags'>>
 ): Promise<void> {
   await db.tasks.update(id, patch)
 }

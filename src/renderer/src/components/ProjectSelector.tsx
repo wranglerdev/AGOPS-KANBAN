@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
-import { useCreateProject, useDeleteProject, useProjects } from '@renderer/hooks/useProjects'
+import { useCreateProject, useProjects } from '@renderer/hooks/useProjects'
 import { useSelectedProject } from '@renderer/state/SelectedProject'
+import { ProjectsManager } from './ProjectsManager'
+import { useToast } from './Toast'
+import { Icon } from './Icon'
 
 export function ProjectSelector(): JSX.Element {
   const { data: projects = [] } = useProjects()
   const { projectId, setProjectId } = useSelectedProject()
   const createProject = useCreateProject()
-  const deleteProject = useDeleteProject()
+  const { showToast } = useToast()
   const [creating, setCreating] = useState(false)
+  const [managing, setManaging] = useState(false)
   const [name, setName] = useState('')
 
   // Garante que sempre haja um projeto selecionado valido.
@@ -28,16 +32,7 @@ export function ProjectSelector(): JSX.Element {
     setProjectId(project.id)
     setName('')
     setCreating(false)
-  }
-
-  const current = projects.find((p) => p.id === projectId)
-
-  const removeCurrent = (): void => {
-    if (!current) return
-    if (!confirm(`Excluir o projeto "${current.name}" e todas as suas tarefas?`)) return
-    deleteProject.mutate(current.id)
-    const next = projects.find((p) => p.id !== current.id)
-    setProjectId(next ? next.id : null)
+    showToast('Projeto criado')
   }
 
   if (creating) {
@@ -82,13 +77,16 @@ export function ProjectSelector(): JSX.Element {
         ))}
       </select>
       <button className="btn" onClick={() => setCreating(true)} title="Novo projeto">
-        + Projeto
+        <Icon name="create_new_folder" size={16} /> Projeto
       </button>
-      {current && (
-        <button className="btn btn-ghost btn-danger" onClick={removeCurrent} title="Excluir projeto">
-          ✕
-        </button>
-      )}
+      <button
+        className="icon-btn"
+        onClick={() => setManaging(true)}
+        title="Gerenciar projetos"
+      >
+        <Icon name="settings" size={18} />
+      </button>
+      {managing && <ProjectsManager onClose={() => setManaging(false)} />}
     </div>
   )
 }
