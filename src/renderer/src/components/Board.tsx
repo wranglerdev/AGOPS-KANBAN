@@ -17,7 +17,14 @@ import { useActiveTasks } from '@renderer/hooks/useTasks'
 import { moveTaskAcross, reindexColumn } from '@renderer/db/api'
 import { Column } from './Column'
 import { TaskModal } from './TaskModal'
+import { BoardToolbar } from './BoardToolbar'
 import { priorityColorVar, formatDate, tagColor } from '@renderer/lib/format'
+import {
+  buildTaskFuse,
+  collectTags,
+  matchesDate,
+  type DateRange
+} from '@renderer/lib/taskFilters'
 
 type Cols = Record<Priority, Task[]>
 
@@ -37,15 +44,42 @@ export function Board({ projectId }: { projectId: string }): JSX.Element {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [openTask, setOpenTask] = useState<Task | null>(null)
 
+  // Estado dos filtros da barra (busca fuzzy + tags + data de criacao).
+  const [search, setSearch] = useState('')
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [dateRange, setDateRange] = useState<DateRange>('all')
+
+  const allTags = useMemo(() => collectTags(tasks), [tasks])
+  const fuse = useMemo(() => buildTaskFuse(tasks), [tasks])
+
+  // Tarefas visiveis apos aplicar data + tags (OR) + busca fuzzy.
+  const filtered = useMemo(() => {
+    let list = tasks.filter((t) => matchesDate(t, dateRange))
+    if (selectedTags.length > 0) {
+      list = list.filter((t) => (t.tags ?? []).some((tag) => selectedTags.includes(tag)))
+    }
+    const q = search.trim()
+    if (q) {
+      const matchIds = new Set(fuse.search(q).map((r) => r.item.id))
+      list = list.filter((t) => matchIds.has(t.id))
+    }
+    return list
+  }, [tasks, dateRange, selectedTags, search, fuse])
+
   const colsRef = useRef(cols)
   colsRef.current = cols
   const startContainer = useRef<Priority | null>(null)
   const isDragging = useRef(false)
 
-  // Sincroniza estado local com o banco quando nao estamos arrastando.
+  // Sincroniza estado local com o banco/filtros quando nao estamos arrastando.
   useEffect(() => {
-    if (!isDragging.current) setCols(buildCols(tasks))
-  }, [tasks])
+    if (!isDragging.current) setCols(buildCols(filtered))
+  }, [filtered])
+
+  const toggleTag = (tag: string): void =>
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    )
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -111,7 +145,7 @@ export function Board({ projectId }: { projectId: string }): JSX.Element {
 
     if (!over || !start) {
       isDragging.current = false
-      setCols(buildCols(tasks))
+      setCols(buildCols(filtered))
       return
     }
 
@@ -150,7 +184,17 @@ export function Board({ projectId }: { projectId: string }): JSX.Element {
   }
 
   return (
-    <>
+    <div className="board-view">
+      <BoardToolbar
+        search={search}
+        onSearch={setSearch}
+        allTags={allTags}
+        selectedTags={selectedTags}
+        onToggleTag={toggleTag}
+        onClearTags={() => setSelectedTags([])}
+        dateRange={dateRange}
+        onDateRange={setDateRange}
+      />
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -161,7 +205,7 @@ export function Board({ projectId }: { projectId: string }): JSX.Element {
           setActiveId(null)
           startContainer.current = null
           isDragging.current = false
-          setCols(buildCols(tasks))
+          setCols(buildCols(filtered))
         }}
       >
         <div className="board">
@@ -204,6 +248,6 @@ export function Board({ projectId }: { projectId: string }): JSX.Element {
       </DndContext>
 
       {openTask && <TaskModal task={openTask} onClose={() => setOpenTask(null)} />}
-    </>
+    </div>
   )
 }

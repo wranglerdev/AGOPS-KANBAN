@@ -52,6 +52,104 @@ export async function listCompletedTasks(projectId?: string): Promise<Task[]> {
     .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0))
 }
 
+// Todas as tarefas nao arquivadas (ativas + concluidas), para a tabela do resumo.
+// Concluidas primeiro por data desc; ativas depois por criacao desc.
+export async function listAllTasks(projectId?: string): Promise<Task[]> {
+  let tasks: Task[]
+  if (projectId) {
+    tasks = await db.tasks.where('projectId').equals(projectId).toArray()
+  } else {
+    tasks = await db.tasks.toArray()
+  }
+  return tasks
+    .filter((t) => t.archived === 0)
+    .sort((a, b) => {
+      const aKey = a.completedAt ?? a.createdAt
+      const bKey = b.completedAt ?? b.createdAt
+      return bKey - aKey
+    })
+}
+
+export interface ImportRow {
+  title: string
+  priority?: Priority
+  description?: string
+  tags?: string[]
+  projectName?: string
+  completedAt?: number | null
+  createdAt?: number
+}
+
+/**
+ * Importa tarefas ja mapeadas. Resolve/cria projetos por nome (case-insensitive).
+ * Linhas sem titulo sao ignoradas. Retorna contagens do que foi criado.
+ */
+export async function importTasks(
+  rows: ImportRow[],
+  opts: { fallbackProjectId?: string } = {}
+): Promise<{ created: number; projectsCreated: number }> {
+  return db.transaction('rw', db.projects, db.tasks, async () => {
+    const projects = await db.projects.toArray()
+    const byName = new Map<string, string>()
+    for (const p of projects) byName.set(p.name.trim().toLowerCase(), p.id)
+
+    let projectsCreated = 0
+    const resolveProject = async (name?: string): Promise<string | null> => {
+      const clean = name?.trim()
+      if (!clean) return opts.fallbackProjectId ?? null
+      const key = clean.toLowerCase()
+      const existing = byName.get(key)
+      if (existing) return existing
+      const project: Project = { id: uid(), name: clean, createdAt: Date.now() }
+      await db.projects.add(project)
+      byName.set(key, project.id)
+      projectsCreated++
+      return project.id
+    }
+
+    // Cache de order por coluna (projectId+priority) para empilhar em sequencia.
+    const orderCache = new Map<string, number>()
+    const nextOrder = async (projectId: string, priority: Priority): Promise<number> => {
+      const key = `${projectId}::${priority}`
+      if (!orderCache.has(key)) {
+        const existing = await db.tasks
+          .where('[projectId+priority]')
+          .equals([projectId, priority])
+          .toArray()
+        const active = existing.filter((t) => t.completedAt == null && t.archived === 0)
+        orderCache.set(key, active.reduce((max, t) => Math.max(max, t.order), -1))
+      }
+      const next = (orderCache.get(key) as number) + 1
+      orderCache.set(key, next)
+      return next
+    }
+
+    let created = 0
+    for (const row of rows) {
+      const title = row.title?.trim()
+      if (!title) continue
+      const projectId = await resolveProject(row.projectName)
+      if (!projectId) continue
+      const priority = row.priority ?? 'medium'
+      const task: Task = {
+        id: uid(),
+        projectId,
+        title,
+        description: row.description?.trim() ?? '',
+        priority,
+        order: await nextOrder(projectId, priority),
+        tags: row.tags ?? [],
+        createdAt: row.createdAt ?? Date.now(),
+        completedAt: row.completedAt ?? null,
+        archived: 0
+      }
+      await db.tasks.add(task)
+      created++
+    }
+    return { created, projectsCreated }
+  })
+}
+
 export async function createTask(input: {
   projectId: string
   title: string

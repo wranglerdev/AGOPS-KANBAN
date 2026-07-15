@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { ProjectSelector } from './ProjectSelector'
 import { Icon } from './Icon'
+import { StatusBar } from './StatusBar'
 import { useTheme } from '@renderer/theme/ThemeProvider'
 
 const TABS = [
@@ -43,7 +44,8 @@ export function AppShell({ children }: { children: ReactNode }): JSX.Element {
           </button>
         </div>
       </header>
-      {children}
+      <main className="app-main">{children}</main>
+      <StatusBar />
     </div>
   )
 }

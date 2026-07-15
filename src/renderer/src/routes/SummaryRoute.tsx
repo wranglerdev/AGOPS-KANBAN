@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
   startOfDay,
   endOfDay,
@@ -6,14 +6,19 @@ import {
   endOfWeek,
   startOfMonth,
   endOfMonth,
-  isWithinInterval
+  isWithinInterval,
+  differenceInCalendarDays
 } from 'date-fns'
-import { PRIORITIES, PRIORITY_LABEL, type Priority } from '@renderer/db/database'
+import { PRIORITIES, PRIORITY_LABEL, type Priority, type Task } from '@renderer/db/database'
 import { useCompletedTasks } from '@renderer/hooks/useTasks'
 import { useProjects } from '@renderer/hooks/useProjects'
 import { useSelectedProject } from '@renderer/state/SelectedProject'
-import { priorityColorVar, formatDateTime } from '@renderer/lib/format'
+import { priorityColorVar } from '@renderer/lib/format'
+import { toCSV } from '@renderer/lib/csv'
 import { Icon } from '@renderer/components/Icon'
+import { TasksTable } from '@renderer/components/TasksTable'
+import { ImportCsvModal } from '@renderer/components/ImportCsvModal'
+import { useToast } from '@renderer/components/Toast'
 
 type Period = 'day' | 'week' | 'month'
 
@@ -30,8 +35,11 @@ function intervalFor(period: Period): { start: Date; end: Date } {
 export function SummaryRoute(): JSX.Element {
   const [period, setPeriod] = useState<Period>('week')
   const [allProjects, setAllProjects] = useState(true)
+  const [importOpen, setImportOpen] = useState(false)
+  const [filteredRows, setFilteredRows] = useState<Task[]>([])
   const { projectId } = useSelectedProject()
   const { data: projects = [] } = useProjects()
+  const { showToast } = useToast()
 
   const scope = allProjects ? undefined : projectId ?? undefined
   const { data: completed = [] } = useCompletedTasks(scope)
@@ -52,33 +60,52 @@ export function SummaryRoute(): JSX.Element {
     return map
   }, [inPeriod])
 
-  const projectName = (id: string): string => projects.find((p) => p.id === id)?.name ?? '—'
+  const activeProjects = useMemo(() => new Set(inPeriod.map((t) => t.projectId)).size, [inPeriod])
   const maxByPrio = Math.max(1, ...PRIORITIES.map((p) => byPriority[p]))
 
-  const byProject = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const t of inPeriod) map.set(t.projectId, (map.get(t.projectId) ?? 0) + 1)
-    return [...map.entries()].sort((a, b) => b[1] - a[1])
-  }, [inPeriod])
+  const days = Math.max(1, differenceInCalendarDays(end, start) + 1)
+  const pace = (inPeriod.length / days).toFixed(1)
+
+  const projectName = useCallback(
+    (id: string): string => projects.find((p) => p.id === id)?.name ?? '—',
+    [projects]
+  )
+
+  const exportCsv = (): void => {
+    const rows = filteredRows.map((t) => ({
+      'Título': t.title,
+      Prioridade: PRIORITY_LABEL[t.priority],
+      Status: t.completedAt != null ? 'Concluída' : 'Ativa',
+      Tags: (t.tags ?? []).join('; '),
+      Projeto: projectName(t.projectId),
+      'Descrição': t.description ?? '',
+      'Criada em': new Date(t.createdAt).toISOString(),
+      'Concluída em': t.completedAt != null ? new Date(t.completedAt).toISOString() : ''
+    }))
+    const csv = toCSV(rows)
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const stamp = new Date().toISOString().slice(0, 10)
+    a.href = url
+    a.download = `tarefas-${stamp}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast(`${rows.length} ${rows.length === 1 ? 'tarefa exportada' : 'tarefas exportadas'}`)
+  }
 
   return (
     <div className="page">
       <div className="page-head">
-        <h1 className="page-title">Resumo de conclusões</h1>
+        <h1 className="page-title">Resumo</h1>
         <div className="segmented">
           {(['day', 'week', 'month'] as Period[]).map((p) => (
-            <button
-              key={p}
-              className={period === p ? 'active' : ''}
-              onClick={() => setPeriod(p)}
-            >
+            <button key={p} className={period === p ? 'active' : ''} onClick={() => setPeriod(p)}>
               {PERIOD_LABEL[p]}
             </button>
           ))}
         </div>
-        <label
-          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, marginLeft: 6 }}
-        >
+        <label className="all-projects-toggle">
           <input
             type="checkbox"
             checked={allProjects}
@@ -86,23 +113,41 @@ export function SummaryRoute(): JSX.Element {
           />
           Todos os projetos
         </label>
+        <span className="spacer" />
+        <div className="csv-actions">
+          <button
+            className="btn"
+            onClick={exportCsv}
+            disabled={filteredRows.length === 0}
+            title="Exportar tarefas filtradas para CSV"
+          >
+            <Icon name="download" size={16} /> Exportar
+          </button>
+          <button className="btn" onClick={() => setImportOpen(true)} title="Importar tarefas de CSV">
+            <Icon name="upload" size={16} /> Importar
+          </button>
+        </div>
       </div>
 
-      <div className="stat-grid">
+      <div className="stat-grid stat-grid-compact">
         <div className="stat">
-          <Icon name="task_alt" size={20} className="stat-icon" />
           <div className="stat-value">{inPeriod.length}</div>
           <div className="stat-label">Concluídas ({PERIOD_LABEL[period].toLowerCase()})</div>
         </div>
         <div className="stat">
-          <Icon name="priority_high" size={20} className="stat-icon" />
           <div className="stat-value">{byPriority.urgent + byPriority.high}</div>
           <div className="stat-label">Urgentes + Altas</div>
         </div>
         <div className="stat">
-          <Icon name="folder" size={20} className="stat-icon" />
-          <div className="stat-value">{byProject.length}</div>
+          <div className="stat-value">{activeProjects}</div>
           <div className="stat-label">Projetos ativos</div>
+        </div>
+        <div className="stat">
+          <div className="stat-value">
+            {pace}
+            <span className="stat-unit">/dia</span>
+          </div>
+          <div className="stat-label">Pace</div>
         </div>
       </div>
 
@@ -125,72 +170,10 @@ export function SummaryRoute(): JSX.Element {
         ))}
       </div>
 
-      {allProjects && byProject.length > 0 && (
-        <>
-          <h2 className="section-title">Por projeto</h2>
-          <div className="bars">
-            {byProject.map(([id, count]) => (
-              <div className="bar-row" key={id}>
-                <span
-                  style={{
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                  }}
-                  title={projectName(id)}
-                >
-                  {projectName(id)}
-                </span>
-                <div className="bar-track">
-                  <div
-                    className="bar-fill"
-                    style={{
-                      width: `${(count / (byProject[0]?.[1] || 1)) * 100}%`,
-                      background: 'var(--accent)'
-                    }}
-                  />
-                </div>
-                <span style={{ textAlign: 'right', fontWeight: 600 }}>{count}</span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      <h2 className="section-title">Tarefas</h2>
+      <TasksTable scope={scope} allProjects={allProjects} onFilteredChange={setFilteredRows} />
 
-      <h2 className="section-title">Tarefas concluídas</h2>
-      {inPeriod.length === 0 ? (
-        <p
-          style={{
-            color: 'var(--text-muted)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8
-          }}
-        >
-          <Icon name="checklist" size={18} /> Nenhuma tarefa concluída neste período.
-        </p>
-      ) : (
-        <div className="completed-list">
-          {inPeriod
-            .slice()
-            .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0))
-            .map((t) => (
-              <div className="completed-item" key={t.id}>
-                <span
-                  className="prio-dot"
-                  style={{ background: priorityColorVar[t.priority] }}
-                />
-                <span className="title">{t.title}</span>
-                {allProjects && (
-                  <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>
-                    {projectName(t.projectId)}
-                  </span>
-                )}
-                <span className="when">{formatDateTime(t.completedAt as number)}</span>
-              </div>
-            ))}
-        </div>
-      )}
+      {importOpen && <ImportCsvModal onClose={() => setImportOpen(false)} />}
     </div>
   )
 }

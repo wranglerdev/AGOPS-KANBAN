@@ -18,6 +18,13 @@ export function useCompletedTasks(projectId?: string) {
   })
 }
 
+export function useAllTasks(projectId?: string) {
+  return useQuery({
+    queryKey: qk.allTasks(projectId),
+    queryFn: () => api.listAllTasks(projectId)
+  })
+}
+
 function useInvalidateTasks() {
   const qc = useQueryClient()
   return () => qc.invalidateQueries({ queryKey: ['tasks'] })
@@ -68,5 +75,17 @@ export function useDeleteTask() {
   return useMutation({
     mutationFn: (id: string) => api.deleteTask(id),
     onSuccess: invalidate
+  })
+}
+
+export function useImportTasks() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { rows: api.ImportRow[]; fallbackProjectId?: string }) =>
+      api.importTasks(v.rows, { fallbackProjectId: v.fallbackProjectId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks'] })
+      qc.invalidateQueries({ queryKey: qk.projects })
+    }
   })
 }
