@@ -44,20 +44,15 @@ export function NoteEditor({
 
   const exportMd = async (): Promise<void> => {
     const fileName = sanitizeFileName(title)
-    if (window.api?.saveMarkdown) {
-      const saved = await window.api.saveMarkdown(fileName, content)
-      if (saved) onToast('Nota exportada')
-    } else {
-      // Fallback (dev no navegador): download via Blob.
-      const blob = new Blob([content], { type: 'text/markdown' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${fileName}.md`
-      a.click()
-      URL.revokeObjectURL(url)
-      onToast('Nota exportada')
-    }
+    // Download via Blob.
+    const blob = new Blob([content], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${fileName}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+    onToast('Nota exportada')
   }
 
   const remove = (): void => {

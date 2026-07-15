@@ -1,18 +1,15 @@
 {
   "name": "agops-kanban",
   "version": "1.0.0",
-  "description": "AGOPS Kanban - app corporativo de gestao de tarefas (Electron + React + TanStack)",
-  "main": "./out/main/index.js",
+  "description": "AGOPS Kanban - app corporativo de gestao de tarefas (PWA + React + TanStack)",
   "author": "AGOPS",
   "license": "MIT",
+  "type": "module",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
-    "preview": "electron-vite preview",
-    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
-    "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
-    "typecheck": "npm run typecheck:node && npm run typecheck:web",
-    "pack:dir": "electron-vite build && electron-builder --win dir"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.web.json --composite false"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -32,10 +29,8 @@
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
-    "electron": "42.5.0",
-    "electron-builder": "26.15.3",
-    "electron-vite": "^2.3.0",
     "typescript": "^5.7.3",
-    "vite": "^5.4.14"
+    "vite": "^5.4.14",
+    "vite-plugin-pwa": "^0.21.1"
   }
 }

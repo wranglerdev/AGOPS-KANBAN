@@ -16,12 +16,12 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "baseUrl": ".",
+    "types": ["vite/client", "vite-plugin-pwa/client"],
     "paths": {
       "@renderer/*": ["src/renderer/src/*"]
     }
   },
   "include": [
-    "src/renderer/src/**/*",
-    "src/preload/index.d.ts"
+    "src/renderer/src/**/*"
   ]
 }
