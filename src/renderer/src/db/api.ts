@@ -192,6 +192,41 @@ export async function updateTask(
   await db.tasks.update(id, patch)
 }
 
+// order do fim de uma coluna (maior order + 1) entre as tarefas ativas.
+async function nextOrderInColumn(projectId: string, priority: Priority): Promise<number> {
+  const existing = await db.tasks
+    .where('[projectId+priority]')
+    .equals([projectId, priority])
+    .toArray()
+  const active = existing.filter((t) => t.completedAt == null && t.archived === 0)
+  return active.reduce((max, t) => Math.max(max, t.order), -1) + 1
+}
+
+/** Duplica uma tarefa: copia no fim da mesma coluna, resetando conclusao. */
+export async function duplicateTask(id: string): Promise<Task | null> {
+  const src = await db.tasks.get(id)
+  if (!src) return null
+  const copy: Task = {
+    ...src,
+    id: uid(),
+    title: `${src.title} (cópia)`,
+    order: await nextOrderInColumn(src.projectId, src.priority),
+    createdAt: Date.now(),
+    completedAt: null,
+    archived: 0
+  }
+  await db.tasks.add(copy)
+  return copy
+}
+
+/** Muda a prioridade (coluna) fora do drag, mantendo order consistente no destino. */
+export async function changeTaskPriority(id: string, priority: Priority): Promise<void> {
+  const task = await db.tasks.get(id)
+  if (!task || task.priority === priority) return
+  const order = await nextOrderInColumn(task.projectId, priority)
+  await db.tasks.update(id, { priority, order })
+}
+
 export async function completeTask(id: string): Promise<void> {
   await db.tasks.update(id, { completedAt: Date.now() })
 }
@@ -282,6 +317,22 @@ export async function updateNote(
   patch: Partial<Pick<Note, 'title' | 'contentMd'>>
 ): Promise<void> {
   await db.notes.update(id, { ...patch, updatedAt: Date.now() })
+}
+
+/** Duplica uma nota mantendo o conteudo; a copia entra no topo (updatedAt agora). */
+export async function duplicateNote(id: string): Promise<Note | null> {
+  const src = await db.notes.get(id)
+  if (!src) return null
+  const now = Date.now()
+  const copy: Note = {
+    id: uid(),
+    title: `${src.title} (cópia)`,
+    contentMd: src.contentMd,
+    createdAt: now,
+    updatedAt: now
+  }
+  await db.notes.add(copy)
+  return copy
 }
 
 export async function deleteNote(id: string): Promise<void> {

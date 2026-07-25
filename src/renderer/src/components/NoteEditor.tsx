@@ -3,13 +3,10 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { Note } from '@renderer/db/database'
 import { useDeleteNote, useUpdateNote } from '@renderer/hooks/useNotes'
+import { exportNoteMd } from '@renderer/lib/exportNote'
 import { useConfirm } from './ConfirmDialog'
 import { useToast } from './Toast'
 import { Icon } from './Icon'
-
-function sanitizeFileName(name: string): string {
-  return (name.trim() || 'nota').replace(/[\\/:*?"<>|]+/g, '-').slice(0, 80)
-}
 
 export function NoteEditor({ note }: { note: Note }): JSX.Element {
   const [mode, setMode] = useState<'edit' | 'read'>('edit')
@@ -41,16 +38,8 @@ export function NoteEditor({ note }: { note: Note }): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, content])
 
-  const exportMd = async (): Promise<void> => {
-    const fileName = sanitizeFileName(title)
-    // Download via Blob.
-    const blob = new Blob([content], { type: 'text/markdown' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${fileName}.md`
-    a.click()
-    URL.revokeObjectURL(url)
+  const exportMd = (): void => {
+    exportNoteMd(title, content)
     showToast('Nota exportada')
   }
 

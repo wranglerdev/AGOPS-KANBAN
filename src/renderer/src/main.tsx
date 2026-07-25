@@ -8,6 +8,7 @@ import { ThemeProvider } from '@renderer/theme/ThemeProvider'
 import { SelectedProjectProvider } from '@renderer/state/SelectedProject'
 import { ToastProvider } from '@renderer/components/Toast'
 import { ConfirmProvider } from '@renderer/components/ConfirmDialog'
+import { ContextMenuProvider } from '@renderer/components/ContextMenu'
 import { registerSW } from 'virtual:pwa-register'
 import '@renderer/theme/theme.css'
 
@@ -18,11 +19,13 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <ThemeProvider>
       <ToastProvider>
         <ConfirmProvider>
-          <QueryClientProvider client={queryClient}>
-            <SelectedProjectProvider>
-              <RouterProvider router={router} />
-            </SelectedProjectProvider>
-          </QueryClientProvider>
+          <ContextMenuProvider>
+            <QueryClientProvider client={queryClient}>
+              <SelectedProjectProvider>
+                <RouterProvider router={router} />
+              </SelectedProjectProvider>
+            </QueryClientProvider>
+          </ContextMenuProvider>
         </ConfirmProvider>
       </ToastProvider>
     </ThemeProvider>

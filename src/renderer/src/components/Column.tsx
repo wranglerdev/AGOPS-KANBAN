@@ -12,6 +12,7 @@ export function Column({
   tasks,
   projectId,
   onOpenTask,
+  onContextMenu,
   highlightIds,
   onFocusBlockers
 }: {
@@ -19,6 +20,7 @@ export function Column({
   tasks: Task[]
   projectId: string
   onOpenTask: (task: Task) => void
+  onContextMenu: (e: React.MouseEvent, task: Task) => void
   highlightIds: Set<string> | null
   onFocusBlockers: (ids: Set<string> | null) => void
 }): JSX.Element {
@@ -47,6 +49,7 @@ export function Column({
                 key={task.id}
                 task={task}
                 onOpen={onOpenTask}
+                onContextMenu={onContextMenu}
                 highlightIds={highlightIds}
                 onFocusBlockers={onFocusBlockers}
               />

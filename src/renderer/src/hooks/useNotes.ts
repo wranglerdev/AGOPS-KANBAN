@@ -29,3 +29,8 @@ export function useDeleteNote() {
   const invalidate = useInvalidateNotes()
   return useMutation({ mutationFn: (id: string) => api.deleteNote(id), onSuccess: invalidate })
 }
+
+export function useDuplicateNote() {
+  const invalidate = useInvalidateNotes()
+  return useMutation({ mutationFn: (id: string) => api.duplicateNote(id), onSuccess: invalidate })
+}

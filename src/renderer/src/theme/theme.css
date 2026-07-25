@@ -1527,12 +1527,106 @@ button {
   flex: 1;
 }
 
+/* -------------------------- Menu de contexto -------------------------- */
+.context-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1999;
+}
+.context-menu {
+  position: fixed;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  animation: context-menu-in 120ms var(--ease-out);
+}
+@keyframes context-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-2px);
+  }
+}
+.context-menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms var(--ease-out);
+}
+.context-menu-item:hover {
+  background: var(--surface-hover);
+}
+.context-menu-item .context-menu-item-icon {
+  color: var(--text-faint);
+  flex: none;
+}
+.context-menu-item-label {
+  flex: 1;
+}
+.context-menu-item.danger {
+  color: var(--danger);
+}
+.context-menu-item.danger:hover {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+.context-menu-item.danger .context-menu-item-icon {
+  color: var(--danger);
+}
+.context-menu-item.disabled {
+  color: var(--text-faint);
+  cursor: default;
+  pointer-events: none;
+  opacity: 0.55;
+}
+.context-menu-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+.context-menu-chevron {
+  color: var(--text-faint);
+  font-size: 15px;
+  line-height: 1;
+  margin-left: 4px;
+}
+.context-menu-submenu {
+  position: absolute;
+  top: -5px;
+  left: 100%;
+  margin-left: 3px;
+}
+.note-item-rename {
+  font-weight: 600;
+  font-size: 13px;
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 9px 11px;
+  outline: none;
+}
+
 /* Reduced motion: mantem fades (ajudam a compreensao), remove o movimento */
 @media (prefers-reduced-motion: reduce) {
   .btn:active,
   .icon-btn:active,
   .segmented button:active {
     transform: none;
+  }
+  .context-menu {
+    animation: none;
   }
   @starting-style {
     .modal {

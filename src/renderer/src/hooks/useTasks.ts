@@ -85,6 +85,23 @@ export function useDeleteTask() {
   })
 }
 
+export function useDuplicateTask() {
+  const invalidate = useInvalidateTasks()
+  return useMutation({
+    mutationFn: (id: string) => api.duplicateTask(id),
+    onSuccess: invalidate
+  })
+}
+
+export function useChangeTaskPriority() {
+  const invalidate = useInvalidateTasks()
+  return useMutation({
+    mutationFn: (v: { id: string; priority: Priority }) =>
+      api.changeTaskPriority(v.id, v.priority),
+    onSuccess: invalidate
+  })
+}
+
 export function useImportTasks() {
   const qc = useQueryClient()
   return useMutation({

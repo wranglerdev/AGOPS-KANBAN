@@ -11,13 +11,23 @@ import {
   type DragStartEvent
 } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
+import { useNavigate } from '@tanstack/react-router'
 import type { Priority, Task } from '@renderer/db/database'
-import { PRIORITIES } from '@renderer/db/database'
-import { useActiveTasks } from '@renderer/hooks/useTasks'
+import { PRIORITIES, PRIORITY_LABEL } from '@renderer/db/database'
+import {
+  useActiveTasks,
+  useChangeTaskPriority,
+  useCompleteTask,
+  useDeleteTask,
+  useDuplicateTask
+} from '@renderer/hooks/useTasks'
 import { moveTaskAcross, reindexColumn } from '@renderer/db/api'
 import { Column } from './Column'
 import { TaskModal } from './TaskModal'
 import { BoardToolbar } from './BoardToolbar'
+import { useContextMenu, type MenuEntry } from './ContextMenu'
+import { useConfirm } from './ConfirmDialog'
+import { useToast } from './Toast'
 import { priorityColorVar, formatDate, tagColor } from '@renderer/lib/format'
 import {
   buildTaskFuse,
@@ -50,6 +60,15 @@ export function Board({ projectId }: { projectId: string }): JSX.Element {
   const [search, setSearch] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [dateRange, setDateRange] = useState<DateRange>('all')
+
+  const navigate = useNavigate()
+  const { openContextMenu } = useContextMenu()
+  const confirm = useConfirm()
+  const { showToast } = useToast()
+  const completeTask = useCompleteTask()
+  const duplicateTask = useDuplicateTask()
+  const changePriority = useChangeTaskPriority()
+  const deleteTask = useDeleteTask()
 
   const allTags = useMemo(() => collectTags(tasks), [tasks])
   const fuse = useMemo(() => buildTaskFuse(tasks), [tasks])
@@ -185,6 +204,77 @@ export function Board({ projectId }: { projectId: string }): JSX.Element {
     })
   }
 
+  const openTaskMenu = (e: React.MouseEvent, task: Task): void => {
+    const items: MenuEntry[] = [
+      { label: 'Editar', icon: 'edit', onClick: () => setOpenTask(task) },
+      {
+        label: 'Concluir',
+        icon: 'check_circle',
+        onClick: () => {
+          completeTask.mutate(task.id)
+          showToast('Tarefa concluída')
+        }
+      },
+      'divider',
+      {
+        label: 'Mover para',
+        icon: 'swap_vert',
+        submenu: PRIORITIES.map((p) => ({
+          label: PRIORITY_LABEL[p],
+          disabled: p === task.priority,
+          onClick: () => {
+            changePriority.mutate({ id: task.id, priority: p })
+            showToast(`Movida para ${PRIORITY_LABEL[p]}`)
+          }
+        }))
+      },
+      {
+        label: 'Duplicar',
+        icon: 'content_copy',
+        onClick: () => {
+          duplicateTask.mutate(task.id)
+          showToast('Tarefa duplicada')
+        }
+      },
+      {
+        label: 'Copiar título',
+        icon: 'content_paste',
+        onClick: () => {
+          void navigator.clipboard?.writeText(task.title)
+          showToast('Título copiado')
+        }
+      }
+    ]
+
+    const noteId = task.noteId
+    if (noteId) {
+      items.push({
+        label: 'Abrir nota vinculada',
+        icon: 'sticky_note_2',
+        onClick: () => navigate({ to: '/notes', search: { note: noteId } })
+      })
+    }
+
+    items.push('divider', {
+      label: 'Excluir',
+      icon: 'delete',
+      danger: true,
+      onClick: async () => {
+        const ok = await confirm({
+          title: 'Excluir tarefa',
+          message: 'Esta ação não pode ser desfeita.',
+          confirmLabel: 'Excluir',
+          danger: true
+        })
+        if (!ok) return
+        deleteTask.mutate(task.id)
+        showToast('Tarefa excluída')
+      }
+    })
+
+    openContextMenu(e, items)
+  }
+
   return (
     <div className="board-view">
       <BoardToolbar
@@ -218,6 +308,7 @@ export function Board({ projectId }: { projectId: string }): JSX.Element {
               tasks={cols[p]}
               projectId={projectId}
               onOpenTask={setOpenTask}
+              onContextMenu={openTaskMenu}
               highlightIds={highlightIds}
               onFocusBlockers={setHighlightIds}
             />

@@ -12,11 +12,13 @@ const HOVER_DELAY = 300
 export function TaskCard({
   task,
   onOpen,
+  onContextMenu,
   highlightIds,
   onFocusBlockers
 }: {
   task: Task
   onOpen: (task: Task) => void
+  onContextMenu: (e: React.MouseEvent, task: Task) => void
   highlightIds: Set<string> | null
   onFocusBlockers: (ids: Set<string> | null) => void
 }): JSX.Element {
@@ -82,6 +84,7 @@ export function TaskCard({
       onClick={() => {
         if (!isDragging) onOpen(task)
       }}
+      onContextMenu={(e) => onContextMenu(e, task)}
     >
       <div className="card-title">{task.title}</div>
       {tags.length > 0 && (
