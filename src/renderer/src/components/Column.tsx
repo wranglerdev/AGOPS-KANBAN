@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { Priority, Task } from '@renderer/db/database'
@@ -25,16 +26,30 @@ export function Column({
   onFocusBlockers: (ids: Set<string> | null) => void
 }): JSX.Element {
   const { setNodeRef, isOver } = useDroppable({ id: priority, data: { type: 'column', priority } })
+  const [adding, setAdding] = useState(false)
 
   return (
     <div className="column">
       <div className="column-head">
-        <span className="prio-dot" style={{ background: priorityColorVar[priority] }} />
+        <span className="col-diamond" style={{ background: priorityColorVar[priority] }} />
         <span className="column-title">{PRIORITY_LABEL[priority]}</span>
         <span className="column-count">{tasks.length}</span>
+        <button
+          className="column-add"
+          title="Adicionar tarefa"
+          aria-label="Adicionar tarefa"
+          onClick={() => setAdding(true)}
+        >
+          <Icon name="add" size={19} />
+        </button>
       </div>
 
-      <QuickAdd projectId={projectId} priority={priority} />
+      <QuickAdd
+        projectId={projectId}
+        priority={priority}
+        open={adding}
+        onOpenChange={setAdding}
+      />
 
       <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div ref={setNodeRef} className={`column-body ${isOver ? 'drop-active' : ''}`}>

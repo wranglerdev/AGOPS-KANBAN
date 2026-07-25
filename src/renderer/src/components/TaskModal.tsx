@@ -9,6 +9,7 @@ import {
   useUpdateTask
 } from '@renderer/hooks/useTasks'
 import { useNotes } from '@renderer/hooks/useNotes'
+import { useLockBodyScroll } from '@renderer/hooks/useLockBodyScroll'
 import { useConfirm } from './ConfirmDialog'
 import { useToast } from './Toast'
 import { TagInput } from './TagInput'
@@ -46,6 +47,8 @@ export function TaskModal({
   const taskById = useMemo(() => new Map(projectTasks.map((t) => [t.id, t])), [projectTasks])
   const noteItems = useMemo(() => notes.map((n) => ({ id: n.id, label: n.title || 'Sem título' })), [notes])
   const linkedNote = noteId ? notes.find((n) => n.id === noteId) ?? null : null
+
+  useLockBodyScroll()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -85,7 +88,7 @@ export function TaskModal({
 
   return (
     <div className="overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal task-modal is-scrollable" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h3>Editar tarefa</h3>
           <span
@@ -96,6 +99,7 @@ export function TaskModal({
           </span>
         </div>
 
+        <div className="modal-body">
         <div className="field">
           <label>Título</label>
           <input
@@ -200,6 +204,7 @@ export function TaskModal({
 
         <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>
           Criada em {formatDate(task.createdAt)}
+        </div>
         </div>
 
         <div className="modal-actions">

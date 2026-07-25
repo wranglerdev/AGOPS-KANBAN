@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import type { Priority } from '@renderer/db/database'
 import { useCreateTask } from '@renderer/hooks/useTasks'
-import { Icon } from './Icon'
 
 export function QuickAdd({
   projectId,
-  priority
+  priority,
+  open,
+  onOpenChange
 }: {
   projectId: string
   priority: Priority
-}): JSX.Element {
-  const [open, setOpen] = useState(false)
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}): JSX.Element | null {
   const [value, setValue] = useState('')
   const createTask = useCreateTask()
 
@@ -20,18 +22,10 @@ export function QuickAdd({
       createTask.mutate({ projectId, priority, title })
     }
     setValue('')
-    if (!keepOpen) setOpen(false)
+    if (!keepOpen) onOpenChange(false)
   }
 
-  if (!open) {
-    return (
-      <div className="quickadd">
-        <button className="quickadd-btn" onClick={() => setOpen(true)}>
-          <Icon name="add" size={16} /> Adicionar tarefa
-        </button>
-      </div>
-    )
-  }
+  if (!open) return null
 
   return (
     <div className="quickadd">
@@ -48,7 +42,7 @@ export function QuickAdd({
           }
           if (e.key === 'Escape') {
             setValue('')
-            setOpen(false)
+            onOpenChange(false)
           }
         }}
         onBlur={() => add(false)}
@@ -68,7 +62,7 @@ export function QuickAdd({
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             setValue('')
-            setOpen(false)
+            onOpenChange(false)
           }}
         >
           Cancelar

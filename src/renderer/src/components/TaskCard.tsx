@@ -3,6 +3,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useNavigate } from '@tanstack/react-router'
 import type { Task } from '@renderer/db/database'
+import { PRIORITY_LABEL } from '@renderer/db/database'
 import { priorityColorVar, formatDate, tagColor } from '@renderer/lib/format'
 import { useNotes } from '@renderer/hooks/useNotes'
 import { Icon } from './Icon'
@@ -86,7 +87,24 @@ export function TaskCard({
       }}
       onContextMenu={(e) => onContextMenu(e, task)}
     >
+      <div className="card-flag">
       <div className="card-title">{task.title}</div>
+
+        <button
+          className="card-menu"
+          title="Opções"
+          aria-label="Opções da tarefa"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            onContextMenu(e, task)
+          }}
+        >
+          <Icon name="more_vert" size={18} />
+        </button>
+      </div>
+      
+      {hasDesc && <div className="card-desc">{task.description}</div>}
       {tags.length > 0 && (
         <div className="card-tags">
           {tags.map((tag) => {
@@ -99,13 +117,8 @@ export function TaskCard({
           })}
         </div>
       )}
-      {(hasDesc || linkedNote || isBlocked) && (
+      {(linkedNote || isBlocked) && (
         <div className="card-icons">
-          {hasDesc && (
-            <span className="card-icon" title="Tem descrição">
-              <Icon name="notes" size={15} />
-            </span>
-          )}
           {linkedNote && (
             <span
               className="card-icon card-icon-action"

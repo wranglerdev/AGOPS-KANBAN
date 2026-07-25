@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Priority } from '@renderer/db/database'
-import { PRIORITY_LABEL } from '@renderer/db/database'
 import { parseCSV } from '@renderer/lib/csv'
 import type { ImportRow } from '@renderer/db/api'
-import { priorityColorVar } from '@renderer/lib/format'
 import { useImportTasks } from '@renderer/hooks/useTasks'
 import { useProjects } from '@renderer/hooks/useProjects'
+import { useLockBodyScroll } from '@renderer/hooks/useLockBodyScroll'
 import { useSelectedProject } from '@renderer/state/SelectedProject'
 import { useToast } from './Toast'
 import { Icon } from './Icon'
@@ -101,6 +100,8 @@ export function ImportCsvModal({ onClose }: { onClose: () => void }): JSX.Elemen
   const { projectId } = useSelectedProject()
   const { showToast } = useToast()
 
+  useLockBodyScroll()
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
@@ -191,86 +192,71 @@ export function ImportCsvModal({ onClose }: { onClose: () => void }): JSX.Elemen
 
   return (
     <div className="overlay" onClick={onClose}>
-      <div className="modal import-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal import-modal is-scrollable" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h3>Importar CSV</h3>
+          <button className="icon-btn" onClick={onClose} title="Fechar">
+            <Icon name="close" size={18} />
+          </button>
         </div>
 
-        <div className="field">
-          <label>Arquivo</label>
-          <label className="file-drop">
-            <Icon name="upload" size={18} />
-            <span>{fileName || 'Selecionar arquivo .csv'}</span>
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) onFile(f)
-              }}
-            />
-          </label>
-          {error && <p className="import-error">{error}</p>}
+        <div className="modal-body">
+          <div className="field">
+            <label>Arquivo</label>
+            <label className="file-drop">
+              <Icon name="upload" size={18} />
+              <span>{fileName || 'Selecionar arquivo .csv'}</span>
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) onFile(f)
+                }}
+              />
+            </label>
+            {error && <p className="import-error">{error}</p>}
+          </div>
+
+          {headers.length > 0 && (
+            <>
+              <div className="field">
+                <label>Mapear campos</label>
+                <div className="field-map-grid">
+                  {FIELDS.map((f) => (
+                    <div key={f.key} className="field-map-row">
+                      <span className="field-map-label">
+                        {f.label}
+                        {f.required && <span className="req">*</span>}
+                      </span>
+                      <select
+                        className="select"
+                        value={mapping[f.key]}
+                        onChange={(e) =>
+                          setMapping((m) => ({ ...m, [f.key]: e.target.value }))
+                        }
+                      >
+                        <option value={IGNORE}>— ignorar</option>
+                        {headers.map((h) => (
+                          <option key={h} value={h}>
+                            {h}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <p className="import-summary">
+                <strong>{importRows.length}</strong> tarefa(s) serão importadas
+                {doneCount > 0 && <> · {doneCount} concluída(s)</>}
+                {newProjects > 0 && <> · {newProjects} projeto(s) novo(s)</>}
+                {!hasTitle && <span className="req"> · mapeie a coluna de Título</span>}
+              </p>
+            </>
+          )}
         </div>
-
-        {headers.length > 0 && (
-          <>
-            <div className="field">
-              <label>Mapear campos</label>
-              <div className="field-map-grid">
-                {FIELDS.map((f) => (
-                  <div key={f.key} className="field-map-row">
-                    <span className="field-map-label">
-                      {f.label}
-                      {f.required && <span className="req">*</span>}
-                    </span>
-                    <select
-                      className="select"
-                      value={mapping[f.key]}
-                      onChange={(e) =>
-                        setMapping((m) => ({ ...m, [f.key]: e.target.value }))
-                      }
-                    >
-                      <option value={IGNORE}>— ignorar</option>
-                      {headers.map((h) => (
-                        <option key={h} value={h}>
-                          {h}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <p className="import-summary">
-              <strong>{importRows.length}</strong> tarefa(s) serão importadas
-              {doneCount > 0 && <> · {doneCount} concluída(s)</>}
-              {newProjects > 0 && <> · {newProjects} projeto(s) novo(s)</>}
-              {!hasTitle && <span className="req"> · mapeie a coluna de Título</span>}
-            </p>
-
-            {importRows.length > 0 && (
-              <div className="import-preview">
-                <div className="import-preview-head">Prévia</div>
-                {importRows.slice(0, 5).map((r, i) => (
-                  <div key={i} className="import-preview-row">
-                    <span
-                      className="prio-dot"
-                      style={{ background: priorityColorVar[r.priority ?? 'medium'] }}
-                    />
-                    <span className="cell-title">{r.title}</span>
-                    <span className="cell-muted">
-                      {PRIORITY_LABEL[r.priority ?? 'medium']}
-                      {r.projectName ? ` · ${r.projectName}` : ''}
-                      {r.completedAt != null ? ' · concluída' : ''}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
 
         <div className="modal-actions">
           <span className="spacer" />

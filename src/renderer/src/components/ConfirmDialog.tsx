@@ -41,12 +41,18 @@ export function ConfirmProvider({ children }: { children: ReactNode }): JSX.Elem
 
   useEffect(() => {
     if (!opts) return
+    // Trava a rolagem da página enquanto o diálogo está aberto.
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') close(false)
       if (e.key === 'Enter') close(true)
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prev
+    }
   }, [opts, close])
 
   return (

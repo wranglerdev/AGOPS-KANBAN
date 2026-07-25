@@ -8,6 +8,7 @@ import {
 import { useSelectedProject } from '@renderer/state/SelectedProject'
 import { useConfirm } from './ConfirmDialog'
 import { useToast } from './Toast'
+import { useLockBodyScroll } from '@renderer/hooks/useLockBodyScroll'
 import { Icon } from './Icon'
 
 export function ProjectsManager({ onClose }: { onClose: () => void }): JSX.Element {
@@ -22,6 +23,8 @@ export function ProjectsManager({ onClose }: { onClose: () => void }): JSX.Eleme
   const [newName, setNewName] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
+
+  useLockBodyScroll()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {

@@ -29,6 +29,7 @@ import { useContextMenu, type MenuEntry } from './ContextMenu'
 import { useConfirm } from './ConfirmDialog'
 import { useToast } from './Toast'
 import { priorityColorVar, formatDate, tagColor } from '@renderer/lib/format'
+import { Icon } from './Icon'
 import {
   buildTaskFuse,
   collectTags,
@@ -321,7 +322,14 @@ export function Board({ projectId }: { projectId: string }): JSX.Element {
               className="card"
               style={{ ['--card-accent' as string]: priorityColorVar[activeTask.priority] }}
             >
+              <div className="card-flag">
+                <Icon name="flag" size={14} />
+                <span className="card-flag-label">{PRIORITY_LABEL[activeTask.priority]}</span>
+              </div>
               <div className="card-title">{activeTask.title}</div>
+              {activeTask.description.trim().length > 0 && (
+                <div className="card-desc">{activeTask.description}</div>
+              )}
               {(activeTask.tags ?? []).length > 0 && (
                 <div className="card-tags">
                   {(activeTask.tags ?? []).map((tag) => {

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PRIORITY_LABEL, type Priority, type Task } from '@renderer/db/database'
 import { useCompletedTasks } from '@renderer/hooks/useTasks'
 import { useProjects } from '@renderer/hooks/useProjects'
@@ -14,8 +14,18 @@ const RANGES = [1, 3, 6, 12] as const
 type Range = (typeof RANGES)[number]
 const RANGE_LABEL: Record<Range, string> = { 1: '1 mês', 3: '3 meses', 6: '6 meses', 12: '1 ano' }
 
+const RANGE_STORAGE_KEY = 'summary.heatmapMonths'
+const isRange = (n: number): n is Range => (RANGES as readonly number[]).includes(n)
+
 export function SummaryRoute(): JSX.Element {
-  const [months, setMonths] = useState<Range>(6)
+  const [months, setMonths] = useState<Range>(() => {
+    const stored = Number(localStorage.getItem(RANGE_STORAGE_KEY))
+    return isRange(stored) ? stored : 6
+  })
+
+  useEffect(() => {
+    localStorage.setItem(RANGE_STORAGE_KEY, String(months))
+  }, [months])
   const [projectIds, setProjectIds] = useState<string[]>([]) // vazio = todos
   const [importOpen, setImportOpen] = useState(false)
   const [filteredRows, setFilteredRows] = useState<Task[]>([])
