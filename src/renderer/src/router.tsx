@@ -33,6 +33,10 @@ const summaryRoute = createRoute({
 const notesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/notes',
+  validateSearch: (search: Record<string, unknown>): { note?: string } => {
+    const note = search.note
+    return typeof note === 'string' && note ? { note } : {}
+  },
   component: NotesRoute
 })
 

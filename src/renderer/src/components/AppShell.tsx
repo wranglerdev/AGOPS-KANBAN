@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { ProjectSelector } from './ProjectSelector'
 import { Icon } from './Icon'
+import { HelpDialog } from './HelpDialog'
 import { StatusBar } from './StatusBar'
 import { useTheme } from '@renderer/theme/ThemeProvider'
 
@@ -14,6 +15,7 @@ const TABS = [
 export function AppShell({ children }: { children: ReactNode }): JSX.Element {
   const { theme, toggle } = useTheme()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const [helpOpen, setHelpOpen] = useState(false)
 
   return (
     <div className="app">
@@ -42,10 +44,14 @@ export function AppShell({ children }: { children: ReactNode }): JSX.Element {
           >
             <Icon name={theme === 'light' ? 'dark_mode' : 'light_mode'} size={18} />
           </button>
+          <button className="icon-btn" onClick={() => setHelpOpen(true)} title="Ajuda">
+            <Icon name="help" size={18} />
+          </button>
         </div>
       </header>
       <main className="app-main">{children}</main>
       <StatusBar />
+      {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} />}
     </div>
   )
 }

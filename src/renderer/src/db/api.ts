@@ -141,7 +141,9 @@ export async function importTasks(
         tags: row.tags ?? [],
         createdAt: row.createdAt ?? Date.now(),
         completedAt: row.completedAt ?? null,
-        archived: 0
+        archived: 0,
+        blockedBy: [],
+        noteId: null
       }
       await db.tasks.add(task)
       created++
@@ -175,7 +177,9 @@ export async function createTask(input: {
     tags: input.tags ?? [],
     createdAt: Date.now(),
     completedAt: null,
-    archived: 0
+    archived: 0,
+    blockedBy: [],
+    noteId: null
   }
   await db.tasks.add(task)
   return task
@@ -183,7 +187,7 @@ export async function createTask(input: {
 
 export async function updateTask(
   id: string,
-  patch: Partial<Pick<Task, 'title' | 'description' | 'priority' | 'tags'>>
+  patch: Partial<Pick<Task, 'title' | 'description' | 'priority' | 'tags' | 'blockedBy' | 'noteId'>>
 ): Promise<void> {
   await db.tasks.update(id, patch)
 }
@@ -202,7 +206,15 @@ export async function reopenTask(id: string): Promise<void> {
 }
 
 export async function deleteTask(id: string): Promise<void> {
-  await db.tasks.delete(id)
+  await db.transaction('rw', db.tasks, async () => {
+    await db.tasks.delete(id)
+    // Remove referencias penduradas: tira o id excluido do blockedBy das demais.
+    await db.tasks
+      .filter((t) => Array.isArray(t.blockedBy) && t.blockedBy.includes(id))
+      .modify((t) => {
+        t.blockedBy = t.blockedBy.filter((b) => b !== id)
+      })
+  })
 }
 
 /**

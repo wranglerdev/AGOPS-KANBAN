@@ -28,6 +28,8 @@ export interface Task {
   createdAt: number
   completedAt: number | null
   archived: number // 0 | 1 (IndexedDB nao indexa boolean)
+  blockedBy: string[] // ids das tarefas que bloqueiam esta
+  noteId: string | null // nota vinculada (1:1)
 }
 
 export interface Note {
@@ -65,6 +67,26 @@ db
       .toCollection()
       .modify((t: Task) => {
         if (!Array.isArray(t.tags)) t.tags = []
+      })
+  )
+
+// v3: adiciona relacoes (blockedBy + noteId). Campos nao indexados, entao a string de
+// stores permanece igual; so faz backfill dos padroes nas tarefas existentes.
+db
+  .version(3)
+  .stores({
+    projects: 'id, name, createdAt',
+    tasks:
+      'id, projectId, priority, completedAt, archived, *tags, [projectId+priority], [projectId+completedAt]',
+    notes: 'id, updatedAt'
+  })
+  .upgrade((tx) =>
+    tx
+      .table('tasks')
+      .toCollection()
+      .modify((t: Task) => {
+        if (!Array.isArray(t.blockedBy)) t.blockedBy = []
+        if (t.noteId === undefined) t.noteId = null
       })
   )
 

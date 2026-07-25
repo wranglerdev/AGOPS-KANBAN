@@ -1,11 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Priority, Task } from '@renderer/db/database'
 import { PRIORITIES, PRIORITY_LABEL } from '@renderer/db/database'
 import { formatDate, priorityColorVar } from '@renderer/lib/format'
-import { useCompleteTask, useDeleteTask, useUpdateTask } from '@renderer/hooks/useTasks'
+import {
+  useActiveTasks,
+  useCompleteTask,
+  useDeleteTask,
+  useUpdateTask
+} from '@renderer/hooks/useTasks'
+import { useNotes } from '@renderer/hooks/useNotes'
 import { useConfirm } from './ConfirmDialog'
 import { useToast } from './Toast'
 import { TagInput } from './TagInput'
+import { SearchSelect } from './SearchSelect'
 import { Icon } from './Icon'
 
 export function TaskModal({
@@ -19,12 +26,26 @@ export function TaskModal({
   const [description, setDescription] = useState(task.description)
   const [priority, setPriority] = useState<Priority>(task.priority)
   const [tags, setTags] = useState<string[]>(task.tags ?? [])
+  const [blockedBy, setBlockedBy] = useState<string[]>(task.blockedBy ?? [])
+  const [noteId, setNoteId] = useState<string | null>(task.noteId ?? null)
 
   const updateTask = useUpdateTask()
   const completeTask = useCompleteTask()
   const deleteTask = useDeleteTask()
   const confirm = useConfirm()
   const { showToast } = useToast()
+
+  const { data: projectTasks = [] } = useActiveTasks(task.projectId)
+  const { data: notes = [] } = useNotes()
+
+  // Candidatos a bloqueadoras: tarefas ativas do projeto (a própria é excluída no picker).
+  const taskItems = useMemo(
+    () => projectTasks.map((t) => ({ id: t.id, label: t.title })),
+    [projectTasks]
+  )
+  const taskById = useMemo(() => new Map(projectTasks.map((t) => [t.id, t])), [projectTasks])
+  const noteItems = useMemo(() => notes.map((n) => ({ id: n.id, label: n.title || 'Sem título' })), [notes])
+  const linkedNote = noteId ? notes.find((n) => n.id === noteId) ?? null : null
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -39,7 +60,7 @@ export function TaskModal({
     if (!trimmed) return
     updateTask.mutate({
       id: task.id,
-      patch: { title: trimmed, description: description.trim(), priority, tags }
+      patch: { title: trimmed, description: description.trim(), priority, tags, blockedBy, noteId }
     })
     onClose()
   }
@@ -114,6 +135,67 @@ export function TaskModal({
         <div className="field">
           <label>Tags</label>
           <TagInput tags={tags} onChange={setTags} />
+        </div>
+
+        <div className="field">
+          <label>
+            <Icon name="lock" size={14} /> Bloqueada por
+          </label>
+          {blockedBy.length > 0 && (
+            <div className="relation-chips">
+              {blockedBy.map((id) => {
+                const blocker = taskById.get(id)
+                return (
+                  <span key={id} className="relation-chip">
+                    <span className="rc-label">{blocker?.title ?? 'Tarefa removida'}</span>
+                    <button
+                      type="button"
+                      className="rc-remove"
+                      title="Remover"
+                      onClick={() => setBlockedBy((prev) => prev.filter((b) => b !== id))}
+                    >
+                      <Icon name="close" size={12} />
+                    </button>
+                  </span>
+                )
+              })}
+            </div>
+          )}
+          <SearchSelect
+            items={taskItems}
+            excludeIds={[task.id, ...blockedBy]}
+            placeholder="Buscar tarefa que bloqueia…"
+            emptyLabel="Nenhuma tarefa disponível"
+            onPick={(id) => setBlockedBy((prev) => [...prev, id])}
+          />
+        </div>
+
+        <div className="field">
+          <label>
+            <Icon name="sticky_note_2" size={14} /> Nota vinculada
+          </label>
+          {noteId ? (
+            <div className="relation-chips">
+              <span className="relation-chip">
+                <span className="rc-label">{linkedNote?.title || 'Nota removida'}</span>
+                <button
+                  type="button"
+                  className="rc-remove"
+                  title="Desvincular"
+                  onClick={() => setNoteId(null)}
+                >
+                  <Icon name="close" size={12} />
+                </button>
+              </span>
+            </div>
+          ) : (
+            <SearchSelect
+              items={noteItems}
+              placeholder="Buscar nota…"
+              emptyLabel="Nenhuma nota"
+              onPick={(id) => setNoteId(id)}
+            />
+          )}
         </div>
 
         <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>

@@ -43,6 +43,8 @@ export function Board({ projectId }: { projectId: string }): JSX.Element {
   const [cols, setCols] = useState<Cols>(emptyCols)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [openTask, setOpenTask] = useState<Task | null>(null)
+  // Conjunto em destaque quando o usuário passa o mouse no cadeado (foco nas bloqueadoras).
+  const [highlightIds, setHighlightIds] = useState<Set<string> | null>(null)
 
   // Estado dos filtros da barra (busca fuzzy + tags + data de criacao).
   const [search, setSearch] = useState('')
@@ -216,6 +218,8 @@ export function Board({ projectId }: { projectId: string }): JSX.Element {
               tasks={cols[p]}
               projectId={projectId}
               onOpenTask={setOpenTask}
+              highlightIds={highlightIds}
+              onFocusBlockers={setHighlightIds}
             />
           ))}
         </div>

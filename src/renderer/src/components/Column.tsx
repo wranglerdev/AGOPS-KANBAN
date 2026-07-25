@@ -11,12 +11,16 @@ export function Column({
   priority,
   tasks,
   projectId,
-  onOpenTask
+  onOpenTask,
+  highlightIds,
+  onFocusBlockers
 }: {
   priority: Priority
   tasks: Task[]
   projectId: string
   onOpenTask: (task: Task) => void
+  highlightIds: Set<string> | null
+  onFocusBlockers: (ids: Set<string> | null) => void
 }): JSX.Element {
   const { setNodeRef, isOver } = useDroppable({ id: priority, data: { type: 'column', priority } })
 
@@ -38,7 +42,15 @@ export function Column({
               <span>Sem tarefas</span>
             </div>
           ) : (
-            tasks.map((task) => <TaskCard key={task.id} task={task} onOpen={onOpenTask} />)
+            tasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onOpen={onOpenTask}
+                highlightIds={highlightIds}
+                onFocusBlockers={onFocusBlockers}
+              />
+            ))
           )}
         </div>
       </SortableContext>
