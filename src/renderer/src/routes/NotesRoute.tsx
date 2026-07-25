@@ -4,6 +4,7 @@ import {
   useCreateNote,
   useDeleteNote,
   useDuplicateNote,
+  useImportNote,
   useNotes,
   useUpdateNote
 } from '@renderer/hooks/useNotes'
@@ -22,11 +23,14 @@ export function NotesRoute(): JSX.Element {
   const duplicateNote = useDuplicateNote()
   const updateNote = useUpdateNote()
   const deleteNote = useDeleteNote()
+  const importNote = useImportNote()
   const confirm = useConfirm()
   const { showToast } = useToast()
   const { openContextMenu } = useContextMenu()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const dragDepth = useRef(0)
 
   // Deep-link vindo do card (Ctrl+clique na nota): pré-seleciona a nota do param `note`.
   const { note: noteParam } = useSearch({ strict: false }) as { note?: string }
@@ -52,6 +56,67 @@ export function NotesRoute(): JSX.Element {
   const addNote = async (): Promise<void> => {
     const note = await createNote.mutateAsync()
     setSelectedId(note.id)
+  }
+
+  // Importa arquivos .md/.txt arrastados para a área de notas.
+  const SUPPORTED = /\.(md|markdown|txt)$/i
+
+  const importFiles = async (files: File[]): Promise<void> => {
+    const supported = files.filter((f) => SUPPORTED.test(f.name))
+    const rejected = files.length - supported.length
+
+    let lastId: string | null = null
+    for (const file of supported) {
+      const text = await file.text()
+      const title = file.name.replace(/\.[^.]+$/, '')
+      const note = await importNote.mutateAsync({ title, contentMd: text })
+      lastId = note.id
+    }
+
+    if (lastId) {
+      setSelectedId(lastId)
+      showToast(
+        supported.length === 1
+          ? 'Nota importada'
+          : `${supported.length} notas importadas`
+      )
+    }
+    if (rejected > 0 && supported.length === 0) {
+      showToast('Arquivo não suportado. Use .md ou .txt.')
+    } else if (rejected > 0) {
+      showToast(`${rejected} arquivo(s) ignorado(s): apenas .md ou .txt.`)
+    }
+  }
+
+  const onDragEnter = (e: React.DragEvent): void => {
+    if (!Array.from(e.dataTransfer.types).includes('Files')) return
+    e.preventDefault()
+    dragDepth.current += 1
+    setDragging(true)
+  }
+
+  const onDragOver = (e: React.DragEvent): void => {
+    if (!Array.from(e.dataTransfer.types).includes('Files')) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+  }
+
+  const onDragLeave = (e: React.DragEvent): void => {
+    if (!Array.from(e.dataTransfer.types).includes('Files')) return
+    e.preventDefault()
+    dragDepth.current -= 1
+    if (dragDepth.current <= 0) {
+      dragDepth.current = 0
+      setDragging(false)
+    }
+  }
+
+  const onDrop = (e: React.DragEvent): void => {
+    e.preventDefault()
+    dragDepth.current = 0
+    setDragging(false)
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) void importFiles(files)
   }
 
   const commitRename = (id: string, title: string): void => {
@@ -112,7 +177,22 @@ export function NotesRoute(): JSX.Element {
   const selected = notes.find((n) => n.id === selectedId) ?? null
 
   return (
-    <div className="notes-layout">
+    <div
+      className={`notes-layout ${dragging ? 'is-dragover' : ''}`}
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      {dragging && (
+        <div className="notes-dropzone">
+          <div className="notes-dropzone-inner">
+            <Icon name="download" size={40} />
+            <strong>Solte para importar</strong>
+            <span>Arquivos .md ou .txt viram notas</span>
+          </div>
+        </div>
+      )}
       <aside className="notes-sidebar">
         <div className="notes-sidebar-head">
           <strong style={{ flex: 1 }}>Notas</strong>

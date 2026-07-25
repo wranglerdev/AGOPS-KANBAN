@@ -34,3 +34,12 @@ export function useDuplicateNote() {
   const invalidate = useInvalidateNotes()
   return useMutation({ mutationFn: (id: string) => api.duplicateNote(id), onSuccess: invalidate })
 }
+
+export function useImportNote() {
+  const invalidate = useInvalidateNotes()
+  return useMutation({
+    mutationFn: (v: { title: string; contentMd: string }) =>
+      api.createNoteFrom(v.title, v.contentMd),
+    onSuccess: invalidate
+  })
+}

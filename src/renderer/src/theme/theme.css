@@ -994,6 +994,7 @@ button {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  table-layout: fixed;
 }
 .tasks-table th {
   text-align: left;
@@ -1013,25 +1014,68 @@ button {
 .tasks-table tbody tr:hover {
   background: var(--bg-sunken);
 }
+/* Larguras fixas (table-layout: fixed) — o Título ocupa o restante e trunca. */
 .tasks-table .col-prio {
-  width: 22px;
+  width: 26px;
   padding-right: 0;
 }
 .tasks-table .col-status {
-  width: 90px;
+  width: 92px;
 }
-.tasks-table .col-project,
+.tasks-table .col-tags {
+  width: 150px;
+}
+.tasks-table .col-project {
+  width: 130px;
+}
 .tasks-table .col-when {
+  width: 118px;
+}
+.tasks-table .col-actions {
+  width: 72px;
+}
+/* Truncamento com reticências nas colunas de texto. */
+.tasks-table .col-title,
+.tasks-table .col-project {
   white-space: nowrap;
-  max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.tasks-table .col-actions {
-  width: 76px;
+.tasks-table .col-tags {
+  overflow: hidden;
+}
+.tasks-table .col-tags .cell-tags {
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 .cell-title {
   font-weight: 600;
+}
+.tag-chip-more {
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+  cursor: default;
+  flex: none;
+}
+/* Célula de data: rótulo (Criada/Concluída) + tempo relativo. */
+.cell-date {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.date-kind {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--accent);
+}
+.date-kind.done {
+  color: var(--prio-low);
+}
+.date-rel {
+  font-size: 12px;
+  color: var(--text-faint);
 }
 .cell-muted {
   color: var(--text-faint);
@@ -1180,12 +1224,342 @@ button {
   white-space: nowrap;
 }
 
+/* --------------- Topo do Resumo: métricas (esq.) + heatmap (dir.) --------------- */
+.summary-top {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) 1fr;
+  gap: 28px;
+  align-items: start;
+  margin-bottom: 24px;
+}
+.summary-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.summary-heatmap {
+  min-width: 0; /* permite o heatmap encolher dentro da coluna 1fr */
+}
+
+/* KPIs minimalistas (empilhados na coluna esquerda). */
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kpi-value {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.5px;
+}
+.kpi-unit {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+.kpi-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 720px) {
+  .summary-top {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .summary-metrics {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+}
+
+/* Cabeçalho de seção com controle à direita (range do heatmap). */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.section-head .section-title {
+  margin: 0;
+}
+
+/* --------------------------- Multi-select de projetos --------------------------- */
+.project-multiselect {
+  position: relative;
+}
+.project-multiselect .pms-label {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-multiselect .pms-caret {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+.pms-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  width: 240px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+}
+.pms-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.pms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.pms-empty {
+  padding: 8px 6px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.pms-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out);
+}
+.pms-item:hover {
+  background: var(--surface-hover);
+}
+.pms-item.active {
+  color: var(--text);
+}
+.pms-item .pms-check {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex: none;
+}
+.pms-item .pms-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------- Heatmap (estilo GitHub) --------------------------- */
+.heatmap {
+  --hm-wd: 28px;
+  --hm-gap: 3px;
+  --hm-max: 20px;
+  --hm-offset: calc(var(--hm-wd) + var(--hm-gap));
+  position: relative;
+  width: 100%;
+}
+.heatmap-grid {
+  display: grid;
+  gap: var(--hm-gap);
+  align-items: center;
+  width: 100%;
+}
+.heatmap-month {
+  align-self: end;
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.heatmap-weekday {
+  justify-self: end;
+  font-size: 9px;
+  color: var(--text-faint);
+  text-align: right;
+}
+.heatmap-cell {
+  aspect-ratio: 1 / 1;
+  border-radius: 3px;
+  background: var(--bg-sunken);
+  border: 1px solid rgba(128, 128, 128, 0.08);
+}
+.heatmap-cell.lvl-out {
+  background: transparent;
+  border-color: transparent;
+}
+.heatmap-cell.lvl-0 {
+  background: var(--bg-sunken);
+}
+.heatmap-cell.lvl-1 {
+  background: color-mix(in srgb, var(--accent) 28%, var(--bg-sunken));
+}
+.heatmap-cell.lvl-2 {
+  background: color-mix(in srgb, var(--accent) 52%, var(--bg-sunken));
+}
+.heatmap-cell.lvl-3 {
+  background: color-mix(in srgb, var(--accent) 76%, var(--bg-sunken));
+}
+.heatmap-cell.lvl-4 {
+  background: var(--accent);
+}
+.heatmap-cell:not(.lvl-out) {
+  cursor: pointer;
+}
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 10px;
+  padding-left: var(--hm-offset);
+}
+.heatmap-legend .heatmap-cell {
+  width: 11px;
+  height: 11px;
+  aspect-ratio: auto;
+}
+.heatmap-legend-label {
+  font-size: 10px;
+  color: var(--text-faint);
+  margin: 0 4px;
+}
+.heatmap-tooltip {
+  position: fixed;
+  z-index: 300;
+  transform: translate(-50%, calc(-100% - 12px));
+  pointer-events: none;
+  min-width: 140px;
+  padding: 8px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  box-shadow: var(--shadow-lg);
+}
+.heatmap-tooltip-date {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: capitalize;
+}
+.heatmap-tooltip-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.heatmap-tooltip-total {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 3px 0 5px;
+}
+.heatmap-tooltip-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.heatmap-tooltip-prio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.heatmap-tooltip-prio .prio-dot {
+  width: 8px;
+  height: 8px;
+}
+.heatmap-tooltip-prio strong {
+  margin-left: auto;
+  color: var(--text);
+}
+
+/* Cabeçalhos ordenáveis da tabela (TanStack Table). */
+.tasks-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.tasks-table th.sortable:hover {
+  color: var(--text);
+}
+.tasks-table .th-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.tasks-table .sort-caret {
+  font-size: 9px;
+  color: var(--text-faint);
+  opacity: 0;
+  transition: opacity 120ms var(--ease-out);
+}
+.tasks-table th.sortable:hover .sort-caret {
+  opacity: 0.6;
+}
+.tasks-table .sort-caret.active {
+  opacity: 1;
+  color: var(--accent);
+}
+
 /* --------------------------- Notes --------------------------- */
 .notes-layout {
+  position: relative;
   flex: 1;
   display: grid;
   grid-template-columns: 260px 1fr;
   overflow: hidden;
+}
+.notes-dropzone {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+.notes-dropzone-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(480px, 90%);
+  padding: 40px 24px;
+  border: 2px dashed var(--accent);
+  border-radius: 14px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  text-align: center;
+}
+.notes-dropzone-inner strong {
+  font-size: 16px;
+}
+.notes-dropzone-inner span {
+  font-size: 13px;
+  color: var(--text-muted);
 }
 .notes-sidebar {
   border-right: 1px solid var(--border);

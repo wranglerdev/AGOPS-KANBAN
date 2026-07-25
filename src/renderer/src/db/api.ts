@@ -227,6 +227,18 @@ export async function changeTaskPriority(id: string, priority: Priority): Promis
   await db.tasks.update(id, { priority, order })
 }
 
+/**
+ * Move uma tarefa para outro projeto, preservando prioridade e status de conclusao.
+ * Reposiciona no fim da coluna correspondente do projeto de destino e limpa
+ * bloqueios (que referenciam tarefas do projeto de origem).
+ */
+export async function moveTaskToProject(id: string, projectId: string): Promise<void> {
+  const task = await db.tasks.get(id)
+  if (!task || task.projectId === projectId) return
+  const order = await nextOrderInColumn(projectId, task.priority)
+  await db.tasks.update(id, { projectId, order, blockedBy: [] })
+}
+
 export async function completeTask(id: string): Promise<void> {
   await db.tasks.update(id, { completedAt: Date.now() })
 }
@@ -305,6 +317,20 @@ export async function createNote(): Promise<Note> {
     id: uid(),
     title: 'Nova nota',
     contentMd: '# Nova nota\n\nEscreva aqui...\n',
+    createdAt: now,
+    updatedAt: now
+  }
+  await db.notes.add(note)
+  return note
+}
+
+/** Cria uma nota a partir de conteudo importado (arquivo .md/.txt). */
+export async function createNoteFrom(title: string, contentMd: string): Promise<Note> {
+  const now = Date.now()
+  const note: Note = {
+    id: uid(),
+    title: title.trim() || 'Nota importada',
+    contentMd,
     createdAt: now,
     updatedAt: now
   }
