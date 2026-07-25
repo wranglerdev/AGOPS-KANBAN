@@ -102,6 +102,15 @@ export function useChangeTaskPriority() {
   })
 }
 
+export function useMoveTaskToProject() {
+  const invalidate = useInvalidateTasks()
+  return useMutation({
+    mutationFn: (v: { id: string; projectId: string }) =>
+      api.moveTaskToProject(v.id, v.projectId),
+    onSuccess: invalidate
+  })
+}
+
 export function useImportTasks() {
   const qc = useQueryClient()
   return useMutation({

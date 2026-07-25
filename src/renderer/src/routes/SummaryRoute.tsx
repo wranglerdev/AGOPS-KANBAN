@@ -1,70 +1,55 @@
 import { useCallback, useMemo, useState } from 'react'
-import {
-  startOfDay,
-  endOfDay,
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-  isWithinInterval,
-  differenceInCalendarDays
-} from 'date-fns'
-import { PRIORITIES, PRIORITY_LABEL, type Priority, type Task } from '@renderer/db/database'
+import { PRIORITY_LABEL, type Priority, type Task } from '@renderer/db/database'
 import { useCompletedTasks } from '@renderer/hooks/useTasks'
 import { useProjects } from '@renderer/hooks/useProjects'
-import { useSelectedProject } from '@renderer/state/SelectedProject'
-import { priorityColorVar } from '@renderer/lib/format'
 import { toCSV } from '@renderer/lib/csv'
 import { Icon } from '@renderer/components/Icon'
 import { TasksTable } from '@renderer/components/TasksTable'
+import { Heatmap } from '@renderer/components/Heatmap'
+import { ProjectMultiSelect } from '@renderer/components/ProjectMultiSelect'
 import { ImportCsvModal } from '@renderer/components/ImportCsvModal'
 import { useToast } from '@renderer/components/Toast'
 
-type Period = 'day' | 'week' | 'month'
-
-const PERIOD_LABEL: Record<Period, string> = { day: 'Dia', week: 'Semana', month: 'Mês' }
-
-function intervalFor(period: Period): { start: Date; end: Date } {
-  const now = new Date()
-  if (period === 'day') return { start: startOfDay(now), end: endOfDay(now) }
-  if (period === 'week')
-    return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) }
-  return { start: startOfMonth(now), end: endOfMonth(now) }
-}
+const RANGES = [1, 3, 6, 12] as const
+type Range = (typeof RANGES)[number]
+const RANGE_LABEL: Record<Range, string> = { 1: '1 mês', 3: '3 meses', 6: '6 meses', 12: '1 ano' }
 
 export function SummaryRoute(): JSX.Element {
-  const [period, setPeriod] = useState<Period>('week')
-  const [allProjects, setAllProjects] = useState(true)
+  const [months, setMonths] = useState<Range>(6)
+  const [projectIds, setProjectIds] = useState<string[]>([]) // vazio = todos
   const [importOpen, setImportOpen] = useState(false)
   const [filteredRows, setFilteredRows] = useState<Task[]>([])
-  const { projectId } = useSelectedProject()
   const { data: projects = [] } = useProjects()
   const { showToast } = useToast()
 
-  const scope = allProjects ? undefined : projectId ?? undefined
-  const { data: completed = [] } = useCompletedTasks(scope)
+  // Todas as concluídas; o filtro por projeto acontece no cliente (multi-select).
+  const { data: completedAll = [] } = useCompletedTasks(undefined)
 
-  const { start, end } = useMemo(() => intervalFor(period), [period])
-
-  const inPeriod = useMemo(
+  const completed = useMemo(
     () =>
-      completed.filter(
-        (t) => t.completedAt != null && isWithinInterval(new Date(t.completedAt), { start, end })
-      ),
-    [completed, start, end]
+      projectIds.length === 0
+        ? completedAll
+        : completedAll.filter((t) => projectIds.includes(t.projectId)),
+    [completedAll, projectIds]
+  )
+
+  const rangeStart = useMemo(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth() - months, now.getDate()).getTime()
+  }, [months])
+  const inRange = useMemo(
+    () => completed.filter((t) => t.completedAt != null && t.completedAt >= rangeStart),
+    [completed, rangeStart]
   )
 
   const byPriority = useMemo(() => {
     const map: Record<Priority, number> = { urgent: 0, high: 0, medium: 0, low: 0 }
-    for (const t of inPeriod) map[t.priority]++
+    for (const t of inRange) map[t.priority]++
     return map
-  }, [inPeriod])
+  }, [inRange])
 
-  const activeProjects = useMemo(() => new Set(inPeriod.map((t) => t.projectId)).size, [inPeriod])
-  const maxByPrio = Math.max(1, ...PRIORITIES.map((p) => byPriority[p]))
-
-  const days = Math.max(1, differenceInCalendarDays(end, start) + 1)
-  const pace = (inPeriod.length / days).toFixed(1)
+  const days = Math.max(1, Math.round(months * 30.4))
+  const pace = (inRange.length / days).toFixed(1)
 
   const projectName = useCallback(
     (id: string): string => projects.find((p) => p.id === id)?.name ?? '—',
@@ -94,25 +79,14 @@ export function SummaryRoute(): JSX.Element {
     showToast(`${rows.length} ${rows.length === 1 ? 'tarefa exportada' : 'tarefas exportadas'}`)
   }
 
+  const scope = projectIds.length === 1 ? projectIds[0] : undefined
+  const allProjects = projectIds.length !== 1
+
   return (
     <div className="page">
       <div className="page-head">
         <h1 className="page-title">Resumo</h1>
-        <div className="segmented">
-          {(['day', 'week', 'month'] as Period[]).map((p) => (
-            <button key={p} className={period === p ? 'active' : ''} onClick={() => setPeriod(p)}>
-              {PERIOD_LABEL[p]}
-            </button>
-          ))}
-        </div>
-        <label className="all-projects-toggle">
-          <input
-            type="checkbox"
-            checked={allProjects}
-            onChange={(e) => setAllProjects(e.target.checked)}
-          />
-          Todos os projetos
-        </label>
+        <ProjectMultiSelect projects={projects} selected={projectIds} onChange={setProjectIds} />
         <span className="spacer" />
         <div className="csv-actions">
           <button
@@ -129,49 +103,53 @@ export function SummaryRoute(): JSX.Element {
         </div>
       </div>
 
-      <div className="stat-grid stat-grid-compact">
-        <div className="stat">
-          <div className="stat-value">{inPeriod.length}</div>
-          <div className="stat-label">Concluídas ({PERIOD_LABEL[period].toLowerCase()})</div>
-        </div>
-        <div className="stat">
-          <div className="stat-value">{byPriority.urgent + byPriority.high}</div>
-          <div className="stat-label">Urgentes + Altas</div>
-        </div>
-        <div className="stat">
-          <div className="stat-value">{activeProjects}</div>
-          <div className="stat-label">Projetos ativos</div>
-        </div>
-        <div className="stat">
-          <div className="stat-value">
-            {pace}
-            <span className="stat-unit">/dia</span>
+      <div className="summary-top">
+        <div className="summary-metrics">
+          <div className="kpi">
+            <span className="kpi-value">{inRange.length}</span>
+            <span className="kpi-label">Concluídas</span>
           </div>
-          <div className="stat-label">Pace</div>
+          <div className="kpi">
+            <span className="kpi-value">{byPriority.urgent + byPriority.high}</span>
+            <span className="kpi-label">Urgentes + Altas</span>
+          </div>
+          <div className="kpi">
+            <span className="kpi-value">
+              {pace}
+              <span className="kpi-unit">/dia</span>
+            </span>
+            <span className="kpi-label">Pace médio</span>
+          </div>
         </div>
-      </div>
 
-      <h2 className="section-title">Por prioridade</h2>
-      <div className="bars">
-        {PRIORITIES.map((p) => (
-          <div className="bar-row" key={p}>
-            <span>{PRIORITY_LABEL[p]}</span>
-            <div className="bar-track">
-              <div
-                className="bar-fill"
-                style={{
-                  width: `${(byPriority[p] / maxByPrio) * 100}%`,
-                  background: priorityColorVar[p]
-                }}
-              />
+        <div className="summary-heatmap">
+          <div className="section-head">
+            <h2 className="section-title">Atividade de conclusão</h2>
+            <div className="segmented">
+              {RANGES.map((r) => (
+                <button
+                  key={r}
+                  className={months === r ? 'active' : ''}
+                  onClick={() => setMonths(r)}
+                >
+                  {RANGE_LABEL[r]}
+                </button>
+              ))}
             </div>
-            <span style={{ textAlign: 'right', fontWeight: 600 }}>{byPriority[p]}</span>
           </div>
-        ))}
+          <Heatmap tasks={completed} months={months} />
+        </div>
       </div>
 
-      <h2 className="section-title">Tarefas</h2>
-      <TasksTable scope={scope} allProjects={allProjects} onFilteredChange={setFilteredRows} />
+      <h2 className="section-title" style={{ marginTop: 24 }}>
+        Tarefas
+      </h2>
+      <TasksTable
+        scope={scope}
+        allProjects={allProjects}
+        projectIds={projectIds}
+        onFilteredChange={setFilteredRows}
+      />
 
       {importOpen && <ImportCsvModal onClose={() => setImportOpen(false)} />}
     </div>
